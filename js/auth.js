@@ -40,7 +40,7 @@ async function sendOTP(email) {
   const r = await fetch(`${SUPA_URL}/auth/v1/otp`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'apikey': SUPA_KEY },
-    body: JSON.stringify({ email, options: { shouldCreateUser: false } })
+    body: JSON.stringify({ email, type: 'email', options: { shouldCreateUser: false } })
   });
   const data = await r.json();
   if (!r.ok) throw new Error(data.msg || data.error_description || 'Failed to send code');
