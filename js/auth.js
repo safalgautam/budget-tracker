@@ -173,6 +173,8 @@ async function handleForgotPassword() {
   btn.textContent = 'Sending…'; btn.disabled = true;
   try {
     await sendPasswordReset(email);
+    // Store email so we can use it when verifying the reset token
+    localStorage.setItem('reset_email', email);
     document.getElementById('forgot-sent').style.display = 'block';
     document.getElementById('forgot-form-inner').style.display = 'none';
   } catch (e) {
@@ -230,28 +232,37 @@ async function handleChangePassword() {
 
 // ── Init ──────────────────────────────────────────────────────
 async function initAuth() {
-  // Check for recovery token in URL hash
-  const hash = window.location.hash;
-  if (hash) {
-    const params = new URLSearchParams(hash.replace('#', ''));
-    const access_token = params.get('access_token');
-    const type = params.get('type');
-    if (access_token && type === 'recovery') {
-      // Clean the URL
-      window.history.replaceState({}, document.title, window.location.pathname);
-      // Get user info from token
-      try {
-        const r = await fetch(`${SUPA_URL}/auth/v1/user`, {
-          headers: { 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + access_token }
-        });
-        const user = await r.json();
-        if (r.ok) {
-          window._authToken = access_token;
-          currentUser = user;
-          showScreen('reset');
-          return;
-        }
-      } catch (e) { console.error('Recovery token error', e); }
+  // Check for recovery token in query string (?token=xxx&type=recovery)
+  const params = new URLSearchParams(window.location.search);
+  const token = params.get('token');
+  const type = params.get('type');
+
+  if (token && type === 'recovery') {
+    // Clean the URL immediately
+    window.history.replaceState({}, document.title, window.location.pathname);
+    // Verify the OTP token to get a session
+    try {
+      const r = await fetch(`${SUPA_URL}/auth/v1/verify`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'apikey': SUPA_KEY },
+        body: JSON.stringify({ token, type: 'recovery', email: localStorage.getItem('reset_email') || '' })
+      });
+      const data = await r.json();
+      if (r.ok && data.access_token) {
+        window._authToken = data.access_token;
+        currentUser = data.user;
+        showScreen('reset');
+        return;
+      } else {
+        console.error('Recovery verify failed:', data);
+        alert('Reset link is invalid or expired. Please request a new one.');
+        showScreen('login');
+        return;
+      }
+    } catch (e) {
+      console.error('Recovery error:', e);
+      showScreen('login');
+      return;
     }
   }
 
