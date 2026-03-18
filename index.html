@@ -29,15 +29,17 @@
     <div class="auth-card">
       <div id="login-form">
         <div class="auth-title">Sign in</div>
-        <div class="auth-sub">Enter your email and we'll send you a magic link to sign in instantly — no password needed.</div>
+        <div class="auth-sub">Enter your email and we'll send you a 6-digit code to sign in.</div>
         <input class="auth-input" type="email" id="login-email" placeholder="you@email.com" autocomplete="email">
-        <button class="auth-btn" id="login-btn" onclick="handleMagicLink()">Send magic link</button>
+        <button class="auth-btn" id="login-btn" onclick="handleSendOTP()">Send code</button>
       </div>
-      <div id="login-sent" style="display:none">
-        <div class="auth-sent">
-          <div class="auth-sent-icon">📬</div>
-          <div class="auth-sent-title">Check your email</div>
-          <div class="auth-sent-sub">We sent a magic link to your email. Tap it to sign in — it expires in 1 hour.</div>
+      <div id="login-otp" style="display:none">
+        <div class="auth-title">Enter your code</div>
+        <div class="auth-sub" id="otp-sub">We sent a 6-digit code to your email. Enter it below.</div>
+        <input class="auth-input" type="number" id="otp-input" placeholder="123456" inputmode="numeric" maxlength="6" style="letter-spacing:0.2em;font-size:24px;text-align:center">
+        <button class="auth-btn" id="otp-btn" onclick="handleVerifyOTP()">Verify code</button>
+        <div style="text-align:center;margin-top:14px">
+          <span style="font-size:13px;color:var(--ink3);cursor:pointer;text-decoration:underline" onclick="resendOTP()">Use a different email</span>
         </div>
       </div>
     </div>

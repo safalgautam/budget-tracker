@@ -35,18 +35,26 @@ function refreshH() {
   window._H = userHeaders();
 }
 
-// ── Magic link ────────────────────────────────────────────────
-async function sendMagicLink(email) {
-  // Use current URL so it works on both localhost and GitHub Pages
-  const base = window.location.origin + window.location.pathname;
-  const redirectTo = base.endsWith('/') ? base : base + '/';
-  const r = await fetch(`${SUPA_URL}/auth/v1/magiclink`, {
+// ── OTP ──────────────────────────────────────────────────────
+async function sendOTP(email) {
+  const r = await fetch(`${SUPA_URL}/auth/v1/otp`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'apikey': SUPA_KEY },
-    body: JSON.stringify({ email, options: { emailRedirectTo: redirectTo }, type: 'magiclink' })
+    body: JSON.stringify({ email, options: { shouldCreateUser: false } })
   });
   const data = await r.json();
-  if (!r.ok) throw new Error(data.msg || data.error_description || 'Failed to send magic link');
+  if (!r.ok) throw new Error(data.msg || data.error_description || 'Failed to send code');
+}
+
+async function verifyOTP(email, token) {
+  const r = await fetch(`${SUPA_URL}/auth/v1/verify`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'apikey': SUPA_KEY },
+    body: JSON.stringify({ email, token, type: 'email' })
+  });
+  const data = await r.json();
+  if (!r.ok) throw new Error(data.msg || data.error_description || 'Invalid code');
+  return data;
 }
 
 // ── Sign out ──────────────────────────────────────────────────
@@ -159,17 +167,57 @@ function showAppScreen() {
   if (currentUser) document.getElementById('user-email').textContent = currentUser.email;
 }
 
-async function handleMagicLink() {
+// ── Login handlers ───────────────────────────────────────────
+let _otpEmail = '';
+
+async function handleSendOTP() {
   const email = document.getElementById('login-email').value.trim();
   if (!email) { alert('Please enter your email'); return; }
   const btn = document.getElementById('login-btn');
   btn.textContent = 'Sending…'; btn.disabled = true;
   try {
-    await sendMagicLink(email);
+    await sendOTP(email);
+    _otpEmail = email;
     document.getElementById('login-form').style.display = 'none';
-    document.getElementById('login-sent').style.display = 'block';
+    document.getElementById('login-otp').style.display = 'block';
   } catch (e) {
     alert('Error: ' + e.message);
-    btn.textContent = 'Send magic link'; btn.disabled = false;
+    btn.textContent = 'Send code'; btn.disabled = false;
   }
+}
+
+async function handleVerifyOTP() {
+  const token = document.getElementById('otp-input').value.trim();
+  if (!token || token.length !== 6) { alert('Please enter the 6-digit code'); return; }
+  const btn = document.getElementById('otp-btn');
+  btn.textContent = 'Verifying…'; btn.disabled = true;
+  try {
+    const data = await verifyOTP(_otpEmail, token);
+    // Store session
+    const session = {
+      access_token: data.access_token,
+      refresh_token: data.refresh_token,
+      expires_at: Math.floor(Date.now() / 1000) + Number(data.expires_in || 3600),
+      user: data.user
+    };
+    storeSession(session);
+    currentUser = session.user;
+    window._authToken = session.access_token;
+    window._userId = session.user.id;
+    window._adminViewUserId = null;
+    isAdmin = await checkAdmin(session.access_token);
+    showAppScreen();
+    if (isAdmin) await renderAdminBar();
+    await loadAll();
+  } catch (e) {
+    alert('Error: ' + e.message);
+    btn.textContent = 'Verify code'; btn.disabled = false;
+  }
+}
+
+function resendOTP() {
+  document.getElementById('login-otp').style.display = 'none';
+  document.getElementById('login-form').style.display = 'block';
+  document.getElementById('login-btn').textContent = 'Send code';
+  document.getElementById('login-btn').disabled = false;
 }
