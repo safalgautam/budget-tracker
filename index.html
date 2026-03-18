@@ -27,23 +27,52 @@
     <div class="auth-logo">Budget</div>
     <div class="auth-tagline">Your personal finance tracker</div>
     <div class="auth-card">
-      <div class="auth-title">Sign in</div>
-      <div class="auth-sub">Enter your email and password to access your budget.</div>
-      <input class="auth-input" type="email" id="login-email" placeholder="you@email.com" autocomplete="email">
-      <input class="auth-input" type="password" id="login-password" placeholder="Password" autocomplete="current-password" style="margin-top:0">
-      <button class="auth-btn" id="login-btn" onclick="handleSignIn()">Sign in</button>
-    </div>
-    <div id="reset-form" style="display:none">
-      <div class="auth-title">Set your password</div>
-      <div class="auth-sub">Choose a password to secure your account.</div>
-      <input class="auth-input" type="password" id="reset-password" placeholder="New password">
-      <input class="auth-input" type="password" id="reset-confirm" placeholder="Confirm password" style="margin-top:0">
-      <button class="auth-btn" id="reset-btn" onclick="handleSetNewPassword()">Set password</button>
-    </div>
+
+      <!-- Login -->
+      <div id="screen-login">
+        <div class="auth-title">Sign in</div>
+        <div class="auth-sub">Enter your email and password to access your budget.</div>
+        <input class="auth-input" type="email" id="login-email" placeholder="you@email.com" autocomplete="email">
+        <input class="auth-input" type="password" id="login-password" placeholder="Password" autocomplete="current-password">
+        <button class="auth-btn" id="login-btn" onclick="handleSignIn()">Sign in</button>
+        <div style="text-align:center;margin-top:14px">
+          <span style="font-size:13px;color:var(--ink3);cursor:pointer;text-decoration:underline" onclick="showScreen('forgot')">Forgot password?</span>
+        </div>
+      </div>
+
+      <!-- Forgot password -->
+      <div id="screen-forgot" style="display:none">
+        <div id="forgot-form-inner">
+          <div class="auth-title">Reset password</div>
+          <div class="auth-sub">Enter your email and we'll send you a reset link.</div>
+          <input class="auth-input" type="email" id="forgot-email" placeholder="you@email.com" autocomplete="email">
+          <button class="auth-btn" id="forgot-btn" onclick="handleForgotPassword()">Send reset email</button>
+          <div style="text-align:center;margin-top:14px">
+            <span style="font-size:13px;color:var(--ink3);cursor:pointer;text-decoration:underline" onclick="showScreen('login')">Back to sign in</span>
+          </div>
+        </div>
+        <div id="forgot-sent" style="display:none;text-align:center;padding:12px 0">
+          <div style="font-size:40px;margin-bottom:12px">📬</div>
+          <div style="font-size:15px;font-weight:500;margin-bottom:6px">Check your email</div>
+          <div style="font-size:13px;color:var(--ink3);line-height:1.5;margin-bottom:16px">We sent a password reset link to your email.</div>
+          <span style="font-size:13px;color:var(--ink3);cursor:pointer;text-decoration:underline" onclick="showScreen('login')">Back to sign in</span>
+        </div>
+      </div>
+
+      <!-- Reset password (from recovery email link) -->
+      <div id="screen-reset" style="display:none">
+        <div class="auth-title">Set new password</div>
+        <div class="auth-sub">Choose a new password for your account.</div>
+        <input class="auth-input" type="password" id="reset-password" placeholder="New password">
+        <input class="auth-input" type="password" id="reset-confirm" placeholder="Confirm new password">
+        <button class="auth-btn" id="reset-btn" onclick="handleSetNewPassword()">Set password</button>
+      </div>
+
     </div>
   </div>
+</div>
 
-  <!-- APP SCREEN -->
+<!-- APP SCREEN -->
 <div id="app-screen" style="display:none">
 
   <div class="sync-bar hidden" id="sync-bar">

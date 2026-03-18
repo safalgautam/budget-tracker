@@ -20,7 +20,7 @@ function storeSession(s) {
   else localStorage.removeItem('sb_session');
 }
 
-// ── Sign in with email + password ─────────────────────────────
+// ── API calls ─────────────────────────────────────────────────
 async function signInWithPassword(email, password) {
   const r = await fetch(`${SUPA_URL}/auth/v1/token?grant_type=password`, {
     method: 'POST',
@@ -28,11 +28,23 @@ async function signInWithPassword(email, password) {
     body: JSON.stringify({ email, password })
   });
   const data = await r.json();
-  if (!r.ok) throw new Error(data.msg || data.error_description || 'Invalid email or password');
+  if (!r.ok) throw new Error(data.error_description || data.msg || 'Invalid email or password');
   return data;
 }
 
-// ── Update password ───────────────────────────────────────────
+async function sendPasswordReset(email) {
+  const redirectTo = window.location.origin + window.location.pathname;
+  const r = await fetch(`${SUPA_URL}/auth/v1/recover`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'apikey': SUPA_KEY },
+    body: JSON.stringify({ email, gotrue_meta_security: {}, options: { emailRedirectTo: redirectTo } })
+  });
+  if (!r.ok) {
+    const d = await r.json();
+    throw new Error(d.error_description || d.msg || 'Failed to send reset email');
+  }
+}
+
 async function updatePassword(newPassword) {
   const r = await fetch(`${SUPA_URL}/auth/v1/user`, {
     method: 'PUT',
@@ -44,19 +56,14 @@ async function updatePassword(newPassword) {
     body: JSON.stringify({ password: newPassword })
   });
   const data = await r.json();
-  if (!r.ok) throw new Error(data.msg || data.error_description || 'Failed to update password');
+  if (!r.ok) throw new Error(data.error_description || data.msg || 'Failed to update password');
   return data;
 }
 
-// ── Sign out ──────────────────────────────────────────────────
 async function signOut() {
   await fetch(`${SUPA_URL}/auth/v1/logout`, {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'apikey': SUPA_KEY,
-      'Authorization': 'Bearer ' + window._authToken
-    }
+    headers: { 'Content-Type': 'application/json', 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + window._authToken }
   }).catch(() => {});
   storeSession(null);
   window._authToken = null;
@@ -64,7 +71,7 @@ async function signOut() {
   window._adminViewUserId = null;
   currentUser = null;
   isAdmin = false;
-  showAuthScreen();
+  showScreen('login');
 }
 
 // ── Check admin ───────────────────────────────────────────────
@@ -78,16 +85,12 @@ async function checkAdmin(token) {
   } catch (e) { return false; }
 }
 
-// ── Load users for admin view ─────────────────────────────────
+// ── Admin bar ─────────────────────────────────────────────────
 async function loadAdminUserList() {
   try {
     const r = await fetch(`${SUPA_URL}/rest/v1/rpc/list_users`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'apikey': SUPA_KEY,
-        'Authorization': 'Bearer ' + window._authToken
-      },
+      headers: { 'Content-Type': 'application/json', 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + window._authToken },
       body: JSON.stringify({})
     });
     if (!r.ok) return [];
@@ -95,7 +98,6 @@ async function loadAdminUserList() {
   } catch (e) { return []; }
 }
 
-// ── Render admin bar ──────────────────────────────────────────
 async function renderAdminBar() {
   document.getElementById('admin-bar').style.display = 'flex';
   const users = await loadAdminUserList();
@@ -110,29 +112,30 @@ async function switchAdminUser() {
   const select = document.getElementById('admin-user-select');
   window._adminViewUserId = select.value || null;
   document.getElementById('admin-viewing').textContent = window._adminViewUserId
-    ? 'Viewing: ' + select.options[select.selectedIndex].text
-    : '';
+    ? 'Viewing: ' + select.options[select.selectedIndex].text : '';
   await loadAll();
 }
 
-// ── Show/hide screens ─────────────────────────────────────────
-function showAuthScreen() {
-  document.getElementById('auth-screen').style.display = 'flex';
-  document.getElementById('app-screen').style.display = 'none';
-  // Reset form state
-  document.getElementById('login-email').value = '';
-  document.getElementById('login-password').value = '';
-  document.getElementById('login-btn').textContent = 'Sign in';
-  document.getElementById('login-btn').disabled = false;
+// ── Screen management ─────────────────────────────────────────
+// Screens: 'login', 'forgot', 'reset', 'app'
+function showScreen(name) {
+  document.getElementById('auth-screen').style.display = name !== 'app' ? 'flex' : 'none';
+  document.getElementById('app-screen').style.display = name === 'app' ? 'block' : 'none';
+  document.getElementById('screen-login').style.display = name === 'login' ? 'block' : 'none';
+  document.getElementById('screen-forgot').style.display = name === 'forgot' ? 'block' : 'none';
+  document.getElementById('screen-reset').style.display = name === 'reset' ? 'block' : 'none';
+  if (name === 'login') {
+    document.getElementById('login-email').value = '';
+    document.getElementById('login-password').value = '';
+    document.getElementById('login-btn').textContent = 'Sign in';
+    document.getElementById('login-btn').disabled = false;
+  }
+  if (name === 'app' && currentUser) {
+    document.getElementById('user-email').textContent = currentUser.email;
+  }
 }
 
-function showAppScreen() {
-  document.getElementById('auth-screen').style.display = 'none';
-  document.getElementById('app-screen').style.display = 'block';
-  if (currentUser) document.getElementById('user-email').textContent = currentUser.email;
-}
-
-// ── Login handler ─────────────────────────────────────────────
+// ── Handlers ──────────────────────────────────────────────────
 async function handleSignIn() {
   const email = document.getElementById('login-email').value.trim();
   const password = document.getElementById('login-password').value;
@@ -153,17 +156,61 @@ async function handleSignIn() {
     window._userId = session.user.id;
     window._adminViewUserId = null;
     isAdmin = await checkAdmin(session.access_token);
-    showAppScreen();
+    showScreen('app');
     if (isAdmin) await renderAdminBar();
     await loadAll();
   } catch (e) {
-    alert('Error: ' + e.message);
+    alert(e.message);
     btn.textContent = 'Sign in';
     btn.disabled = false;
   }
 }
 
-// ── Change password handler ───────────────────────────────────
+async function handleForgotPassword() {
+  const email = document.getElementById('forgot-email').value.trim();
+  if (!email) { alert('Please enter your email'); return; }
+  const btn = document.getElementById('forgot-btn');
+  btn.textContent = 'Sending…'; btn.disabled = true;
+  try {
+    await sendPasswordReset(email);
+    document.getElementById('forgot-sent').style.display = 'block';
+    document.getElementById('forgot-form-inner').style.display = 'none';
+  } catch (e) {
+    alert(e.message);
+    btn.textContent = 'Send reset email';
+    btn.disabled = false;
+  }
+}
+
+async function handleSetNewPassword() {
+  const newPass = document.getElementById('reset-password').value;
+  const confirm = document.getElementById('reset-confirm').value;
+  if (!newPass || newPass.length < 6) { alert('Password must be at least 6 characters'); return; }
+  if (newPass !== confirm) { alert('Passwords do not match'); return; }
+  const btn = document.getElementById('reset-btn');
+  btn.textContent = 'Saving…'; btn.disabled = true;
+  try {
+    await updatePassword(newPass);
+    // Store session and go to app
+    const session = {
+      access_token: window._authToken,
+      expires_at: Math.floor(Date.now() / 1000) + 3600,
+      user: currentUser
+    };
+    storeSession(session);
+    window._userId = currentUser.id;
+    window._adminViewUserId = null;
+    isAdmin = await checkAdmin(window._authToken);
+    showScreen('app');
+    if (isAdmin) await renderAdminBar();
+    await loadAll();
+  } catch (e) {
+    alert(e.message);
+    btn.textContent = 'Set password';
+    btn.disabled = false;
+  }
+}
+
 async function handleChangePassword() {
   const newPass = document.getElementById('new-password').value;
   const confirm = document.getElementById('confirm-password').value;
@@ -176,90 +223,47 @@ async function handleChangePassword() {
     document.getElementById('new-password').value = '';
     document.getElementById('confirm-password').value = '';
     alert('Password updated successfully');
-  } catch (e) { alert('Error: ' + e.message); }
+  } catch (e) { alert(e.message); }
   btn.textContent = 'Update password';
   btn.disabled = false;
 }
 
-// ── Handle URL token (password recovery) ─────────────────────
-async function handleUrlToken() {
-  const hash = window.location.hash;
-  if (!hash) return null;
-  const params = new URLSearchParams(hash.replace('#', ''));
-  const access_token = params.get('access_token');
-  const type = params.get('type');
-  if (!access_token) return null;
-  // Clean URL immediately
-  window.history.replaceState({}, document.title, window.location.pathname);
-  // Get user from token
-  const r = await fetch(`${SUPA_URL}/auth/v1/user`, {
-    headers: { 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + access_token }
-  });
-  const user = await r.json();
-  if (!r.ok) return null;
-  return { access_token, type, user };
-}
-
 // ── Init ──────────────────────────────────────────────────────
 async function initAuth() {
-  // Check for recovery token in URL first
-  const urlToken = await handleUrlToken();
-  if (urlToken) {
-    window._authToken = urlToken.access_token;
-    window._userId = urlToken.user.id;
-    currentUser = urlToken.user;
-    if (urlToken.type === 'recovery') {
-      // Show password reset screen
-      showAuthScreen();
-      showPasswordReset();
-      return;
+  // Check for recovery token in URL hash
+  const hash = window.location.hash;
+  if (hash) {
+    const params = new URLSearchParams(hash.replace('#', ''));
+    const access_token = params.get('access_token');
+    const type = params.get('type');
+    if (access_token && type === 'recovery') {
+      // Clean the URL
+      window.history.replaceState({}, document.title, window.location.pathname);
+      // Get user info from token
+      try {
+        const r = await fetch(`${SUPA_URL}/auth/v1/user`, {
+          headers: { 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + access_token }
+        });
+        const user = await r.json();
+        if (r.ok) {
+          window._authToken = access_token;
+          currentUser = user;
+          showScreen('reset');
+          return;
+        }
+      } catch (e) { console.error('Recovery token error', e); }
     }
   }
 
+  // Check stored session
   const session = getStoredSession();
-  if (!session) { showAuthScreen(); return; }
+  if (!session) { showScreen('login'); return; }
   currentUser = session.user;
   window._authToken = session.access_token;
   window._userId = session.user.id;
   window._adminViewUserId = null;
   isAdmin = await checkAdmin(session.access_token);
-  showAppScreen();
+  showScreen('app');
   if (isAdmin) await renderAdminBar();
   await loadAll();
-}
-
-// ── Password reset screen ─────────────────────────────────────
-function showPasswordReset() {
-  document.getElementById('login-form').style.display = 'none';
-  document.getElementById('reset-form').style.display = 'block';
-}
-
-async function handleSetNewPassword() {
-  const newPass = document.getElementById('reset-password').value;
-  const confirm = document.getElementById('reset-confirm').value;
-  if (!newPass || newPass.length < 6) { alert('Password must be at least 6 characters'); return; }
-  if (newPass !== confirm) { alert('Passwords do not match'); return; }
-  const btn = document.getElementById('reset-btn');
-  btn.textContent = 'Saving…'; btn.disabled = true;
-  try {
-    await updatePassword(newPass);
-    // Now store full session and go to app
-    const session = {
-      access_token: window._authToken,
-      expires_at: Math.floor(Date.now() / 1000) + 3600,
-      user: currentUser
-    };
-    storeSession(session);
-    window._adminViewUserId = null;
-    isAdmin = await checkAdmin(window._authToken);
-    document.getElementById('reset-form').style.display = 'none';
-    document.getElementById('login-form').style.display = 'block';
-    showAppScreen();
-    if (isAdmin) await renderAdminBar();
-    await loadAll();
-  } catch (e) {
-    alert('Error: ' + e.message);
-    btn.textContent = 'Set password';
-    btn.disabled = false;
-  }
 }
