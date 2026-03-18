@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Resetting password...</title>
+<style>
+  body { font-family: sans-serif; display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; background: #F5F2EC; }
+  .box { background: white; padding: 32px; border-radius: 12px; text-align: center; max-width: 320px; }
+  p { color: #666; font-size: 14px; }
+  .debug { margin-top: 16px; font-size: 11px; color: #999; word-break: break-all; text-align: left; }
+</style>
+</head>
+<body>
+<div class="box">
+  <p>Setting up your password reset...</p>
+  <div class="debug" id="debug"></div>
+</div>
+<script>
+  var BASE = 'https://safalgautam.github.io/budget-tracker';
+  var debug = document.getElementById('debug');
+  var hash = window.location.hash;
+  var search = window.location.search;
+
+  debug.innerHTML = 'hash: ' + (hash || 'none') + '<br>search: ' + (search || 'none');
+
+  var token_hash = null;
+
+  // Try query string first
+  if (search) {
+    var sp = new URLSearchParams(search);
+    token_hash = sp.get('token_hash');
+  }
+
+  // Try hash
+  if (!token_hash && hash) {
+    var stripped = hash.replace(/^#recovery\??/, '').replace(/^#/, '');
+    var hp = new URLSearchParams(stripped);
+    token_hash = hp.get('token_hash');
+  }
+
+  debug.innerHTML += '<br>token_hash: ' + (token_hash || 'NOT FOUND');
+
+  if (token_hash) {
+    sessionStorage.setItem('recovery_token_hash', token_hash);
+    debug.innerHTML += '<br>Saved! Redirecting in 2s...';
+    setTimeout(function() {
+      window.location.replace(BASE + '/index.html');
+    }, 2000);
+  } else {
+    debug.innerHTML += '<br>No token found. Redirecting to login...';
+    setTimeout(function() {
+      window.location.replace(BASE + '/index.html');
+    }, 3000);
+  }
+</script>
+</body>
+</html>

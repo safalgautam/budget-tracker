@@ -33,11 +33,11 @@ async function signInWithPassword(email, password) {
 }
 
 async function sendPasswordReset(email) {
-  const redirectTo = window.location.origin + window.location.pathname;
+  const redirectTo = 'https://safalgautam.github.io/budget-tracker/#recovery';
   const r = await fetch(`${SUPA_URL}/auth/v1/recover`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'apikey': SUPA_KEY },
-    body: JSON.stringify({ email, gotrue_meta_security: {}, options: { emailRedirectTo: redirectTo } })
+    body: JSON.stringify({ email, options: { emailRedirectTo: redirectTo } })
   });
   if (!r.ok) {
     const d = await r.json();
@@ -63,7 +63,11 @@ async function updatePassword(newPassword) {
 async function signOut() {
   await fetch(`${SUPA_URL}/auth/v1/logout`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + window._authToken }
+    headers: {
+      'Content-Type': 'application/json',
+      'apikey': SUPA_KEY,
+      'Authorization': 'Bearer ' + window._authToken
+    }
   }).catch(() => {});
   storeSession(null);
   window._authToken = null;
@@ -90,7 +94,11 @@ async function loadAdminUserList() {
   try {
     const r = await fetch(`${SUPA_URL}/rest/v1/rpc/list_users`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + window._authToken },
+      headers: {
+        'Content-Type': 'application/json',
+        'apikey': SUPA_KEY,
+        'Authorization': 'Bearer ' + window._authToken
+      },
       body: JSON.stringify({})
     });
     if (!r.ok) return [];
@@ -102,9 +110,9 @@ async function renderAdminBar() {
   document.getElementById('admin-bar').style.display = 'flex';
   const users = await loadAdminUserList();
   const select = document.getElementById('admin-user-select');
-  select.innerHTML = `<option value="">My data</option>` +
+  select.innerHTML = '<option value="">My data</option>' +
     users.filter(u => u.id !== currentUser.id).map(u =>
-      `<option value="${u.id}">${u.email}</option>`
+      '<option value="' + u.id + '">' + u.email + '</option>'
     ).join('');
 }
 
@@ -117,10 +125,10 @@ async function switchAdminUser() {
 }
 
 // ── Screen management ─────────────────────────────────────────
-// Screens: 'login', 'forgot', 'reset', 'app'
 function showScreen(name) {
-  document.getElementById('auth-screen').style.display = name !== 'app' ? 'flex' : 'none';
-  document.getElementById('app-screen').style.display = name === 'app' ? 'block' : 'none';
+  const isApp = name === 'app';
+  document.getElementById('auth-screen').style.display = isApp ? 'none' : 'flex';
+  document.getElementById('app-screen').style.display = isApp ? 'block' : 'none';
   document.getElementById('screen-login').style.display = name === 'login' ? 'block' : 'none';
   document.getElementById('screen-forgot').style.display = name === 'forgot' ? 'block' : 'none';
   document.getElementById('screen-reset').style.display = name === 'reset' ? 'block' : 'none';
@@ -130,12 +138,18 @@ function showScreen(name) {
     document.getElementById('login-btn').textContent = 'Sign in';
     document.getElementById('login-btn').disabled = false;
   }
-  if (name === 'app' && currentUser) {
+  if (name === 'forgot') {
+    document.getElementById('forgot-form-inner').style.display = 'block';
+    document.getElementById('forgot-sent').style.display = 'none';
+    document.getElementById('forgot-btn').textContent = 'Send reset email';
+    document.getElementById('forgot-btn').disabled = false;
+  }
+  if (isApp && currentUser) {
     document.getElementById('user-email').textContent = currentUser.email;
   }
 }
 
-// ── Handlers ──────────────────────────────────────────────────
+// ── Login handler ─────────────────────────────────────────────
 async function handleSignIn() {
   const email = document.getElementById('login-email').value.trim();
   const password = document.getElementById('login-password').value;
@@ -166,6 +180,7 @@ async function handleSignIn() {
   }
 }
 
+// ── Forgot password handler ───────────────────────────────────
 async function handleForgotPassword() {
   const email = document.getElementById('forgot-email').value.trim();
   if (!email) { alert('Please enter your email'); return; }
@@ -173,8 +188,6 @@ async function handleForgotPassword() {
   btn.textContent = 'Sending…'; btn.disabled = true;
   try {
     await sendPasswordReset(email);
-    // Store email so we can use it when verifying the reset token
-    localStorage.setItem('reset_email', email);
     document.getElementById('forgot-sent').style.display = 'block';
     document.getElementById('forgot-form-inner').style.display = 'none';
   } catch (e) {
@@ -184,6 +197,7 @@ async function handleForgotPassword() {
   }
 }
 
+// ── Reset password handler ────────────────────────────────────
 async function handleSetNewPassword() {
   const newPass = document.getElementById('reset-password').value;
   const confirm = document.getElementById('reset-confirm').value;
@@ -193,7 +207,6 @@ async function handleSetNewPassword() {
   btn.textContent = 'Saving…'; btn.disabled = true;
   try {
     await updatePassword(newPass);
-    // Store session and go to app
     const session = {
       access_token: window._authToken,
       expires_at: Math.floor(Date.now() / 1000) + 3600,
@@ -213,6 +226,7 @@ async function handleSetNewPassword() {
   }
 }
 
+// ── Change password handler ───────────────────────────────────
 async function handleChangePassword() {
   const newPass = document.getElementById('new-password').value;
   const confirm = document.getElementById('confirm-password').value;
@@ -230,22 +244,36 @@ async function handleChangePassword() {
   btn.disabled = false;
 }
 
+// ── Parse recovery token from any URL string ─────────────────
+function getRecoveryToken(url) {
+  url = url || window.location.href;
+  // Look for #recovery?token_hash=xxx in the URL
+  const hashIndex = url.indexOf('#recovery');
+  if (hashIndex === -1) return null;
+  const hashContent = url.substring(hashIndex + 1); // recovery?token_hash=xxx
+  const qIndex = hashContent.indexOf('?');
+  if (qIndex === -1) return null;
+  const params = new URLSearchParams(hashContent.substring(qIndex + 1));
+  return params.get('token_hash');
+}
+
 // ── Init ──────────────────────────────────────────────────────
 async function initAuth() {
-  // Check for recovery token in query string (?token=xxx&type=recovery)
-  const params = new URLSearchParams(window.location.search);
-  const token = params.get('token');
-  const type = params.get('type');
+  // Check sessionStorage for a redirect URL saved by 404.html
+  const redirectUrl = sessionStorage.getItem('redirect_url');
+  if (redirectUrl) sessionStorage.removeItem('redirect_url');
 
-  if (token && type === 'recovery') {
-    // Clean the URL immediately
+  // Try to get recovery token from either the current URL or the stored redirect URL
+  const token_hash = getRecoveryToken(window.location.href) || getRecoveryToken(redirectUrl || '');
+
+  if (token_hash) {
+    // Clean URL
     window.history.replaceState({}, document.title, window.location.pathname);
-    // Verify the OTP token to get a session
     try {
       const r = await fetch(`${SUPA_URL}/auth/v1/verify`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'apikey': SUPA_KEY },
-        body: JSON.stringify({ token, type: 'recovery', email: localStorage.getItem('reset_email') || '' })
+        body: JSON.stringify({ token_hash, type: 'recovery' })
       });
       const data = await r.json();
       if (r.ok && data.access_token) {
@@ -254,19 +282,16 @@ async function initAuth() {
         showScreen('reset');
         return;
       } else {
-        console.error('Recovery verify failed:', data);
-        alert('Reset link is invalid or expired. Please request a new one.');
-        showScreen('login');
-        return;
+        alert('Reset link error: ' + (data.error_description || data.msg || JSON.stringify(data)));
       }
     } catch (e) {
-      console.error('Recovery error:', e);
-      showScreen('login');
-      return;
+      alert('Reset error: ' + e.message);
     }
+    showScreen('login');
+    return;
   }
 
-  // Check stored session
+  // Normal login — check stored session
   const session = getStoredSession();
   if (!session) { showScreen('login'); return; }
   currentUser = session.user;

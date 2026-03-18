@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Budget Tracker</title>
+<script>
+  // GitHub Pages 404 trick — capture the full URL including hash/query
+  // and redirect to the main app with the path encoded
+  var url = window.location.href;
+  var origin = window.location.origin;
+  var path = window.location.pathname;
+  var hash = window.location.hash;
+  var search = window.location.search;
+
+  // Store the full original URL so index.html can read it
+  sessionStorage.setItem('redirect_url', url);
+
+  // Redirect to main app
+  window.location.replace(origin + '/budget-tracker/');
+</script>
+</head>
+<body>
+<p>Redirecting...</p>
+</body>
+</html>
