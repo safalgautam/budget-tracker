@@ -181,8 +181,41 @@ async function handleChangePassword() {
   btn.disabled = false;
 }
 
+// ── Handle URL token (password recovery) ─────────────────────
+async function handleUrlToken() {
+  const hash = window.location.hash;
+  if (!hash) return null;
+  const params = new URLSearchParams(hash.replace('#', ''));
+  const access_token = params.get('access_token');
+  const type = params.get('type');
+  if (!access_token) return null;
+  // Clean URL immediately
+  window.history.replaceState({}, document.title, window.location.pathname);
+  // Get user from token
+  const r = await fetch(`${SUPA_URL}/auth/v1/user`, {
+    headers: { 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + access_token }
+  });
+  const user = await r.json();
+  if (!r.ok) return null;
+  return { access_token, type, user };
+}
+
 // ── Init ──────────────────────────────────────────────────────
 async function initAuth() {
+  // Check for recovery token in URL first
+  const urlToken = await handleUrlToken();
+  if (urlToken) {
+    window._authToken = urlToken.access_token;
+    window._userId = urlToken.user.id;
+    currentUser = urlToken.user;
+    if (urlToken.type === 'recovery') {
+      // Show password reset screen
+      showAuthScreen();
+      showPasswordReset();
+      return;
+    }
+  }
+
   const session = getStoredSession();
   if (!session) { showAuthScreen(); return; }
   currentUser = session.user;
@@ -193,4 +226,40 @@ async function initAuth() {
   showAppScreen();
   if (isAdmin) await renderAdminBar();
   await loadAll();
+}
+
+// ── Password reset screen ─────────────────────────────────────
+function showPasswordReset() {
+  document.getElementById('login-form').style.display = 'none';
+  document.getElementById('reset-form').style.display = 'block';
+}
+
+async function handleSetNewPassword() {
+  const newPass = document.getElementById('reset-password').value;
+  const confirm = document.getElementById('reset-confirm').value;
+  if (!newPass || newPass.length < 6) { alert('Password must be at least 6 characters'); return; }
+  if (newPass !== confirm) { alert('Passwords do not match'); return; }
+  const btn = document.getElementById('reset-btn');
+  btn.textContent = 'Saving…'; btn.disabled = true;
+  try {
+    await updatePassword(newPass);
+    // Now store full session and go to app
+    const session = {
+      access_token: window._authToken,
+      expires_at: Math.floor(Date.now() / 1000) + 3600,
+      user: currentUser
+    };
+    storeSession(session);
+    window._adminViewUserId = null;
+    isAdmin = await checkAdmin(window._authToken);
+    document.getElementById('reset-form').style.display = 'none';
+    document.getElementById('login-form').style.display = 'block';
+    showAppScreen();
+    if (isAdmin) await renderAdminBar();
+    await loadAll();
+  } catch (e) {
+    alert('Error: ' + e.message);
+    btn.textContent = 'Set password';
+    btn.disabled = false;
+  }
 }
