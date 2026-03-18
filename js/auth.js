@@ -244,30 +244,60 @@ async function handleChangePassword() {
   btn.disabled = false;
 }
 
-// ── Parse recovery token from any URL string ─────────────────
-function getRecoveryToken(url) {
+// ── Parse URL hash params ─────────────────────────────────────
+function parseHashParams(url) {
   url = url || window.location.href;
-  // Look for #recovery?token_hash=xxx in the URL
-  const hashIndex = url.indexOf('#recovery');
-  if (hashIndex === -1) return null;
-  const hashContent = url.substring(hashIndex + 1); // recovery?token_hash=xxx
-  const qIndex = hashContent.indexOf('?');
-  if (qIndex === -1) return null;
-  const params = new URLSearchParams(hashContent.substring(qIndex + 1));
-  return params.get('token_hash');
+  const hashIndex = url.indexOf('#');
+  if (hashIndex === -1) return {};
+  const hashContent = url.substring(hashIndex + 1);
+  const params = {};
+  // Handle both #key=val&key=val and #path?key=val formats
+  const queryStr = hashContent.includes('?') ? hashContent.split('?')[1] : hashContent;
+  new URLSearchParams(queryStr).forEach((v, k) => params[k] = v);
+  return params;
 }
 
 // ── Init ──────────────────────────────────────────────────────
 async function initAuth() {
   // Check sessionStorage for a redirect URL saved by 404.html
-  const redirectUrl = sessionStorage.getItem('redirect_url');
+  const redirectUrl = sessionStorage.getItem('redirect_url') || '';
   if (redirectUrl) sessionStorage.removeItem('redirect_url');
 
-  // Try to get recovery token from either the current URL or the stored redirect URL
-  const token_hash = getRecoveryToken(window.location.href) || getRecoveryToken(redirectUrl || '');
+  // Parse hash params from current URL or stored redirect URL
+  const params = Object.keys(parseHashParams(window.location.href)).length > 0
+    ? parseHashParams(window.location.href)
+    : parseHashParams(redirectUrl);
 
-  if (token_hash) {
-    // Clean URL
+  const type = params['type'];
+  const access_token = params['access_token'];
+  const token_hash = params['token_hash'];
+  const refresh_token = params['refresh_token'];
+  const expires_in = params['expires_in'];
+
+  // Handle recovery — Supabase sends access_token directly in hash
+  if (type === 'recovery' && access_token) {
+    window.history.replaceState({}, document.title, window.location.pathname);
+    try {
+      // Get user from the access token
+      const r = await fetch(`${SUPA_URL}/auth/v1/user`, {
+        headers: { 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + access_token }
+      });
+      const user = await r.json();
+      if (r.ok) {
+        window._authToken = access_token;
+        currentUser = user;
+        showScreen('reset');
+        return;
+      }
+    } catch (e) {
+      alert('Reset error: ' + e.message);
+    }
+    showScreen('login');
+    return;
+  }
+
+  // Handle recovery via token_hash
+  if (type === 'recovery' && token_hash) {
     window.history.replaceState({}, document.title, window.location.pathname);
     try {
       const r = await fetch(`${SUPA_URL}/auth/v1/verify`, {
@@ -281,8 +311,6 @@ async function initAuth() {
         currentUser = data.user;
         showScreen('reset');
         return;
-      } else {
-        alert('Reset link error: ' + (data.error_description || data.msg || JSON.stringify(data)));
       }
     } catch (e) {
       alert('Reset error: ' + e.message);
