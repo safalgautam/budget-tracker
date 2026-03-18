@@ -37,11 +37,13 @@ function refreshH() {
 
 // ── Magic link ────────────────────────────────────────────────
 async function sendMagicLink(email) {
-  const redirectTo = window.location.origin + window.location.pathname;
+  // Use current URL so it works on both localhost and GitHub Pages
+  const base = window.location.origin + window.location.pathname;
+  const redirectTo = base.endsWith('/') ? base : base + '/';
   const r = await fetch(`${SUPA_URL}/auth/v1/magiclink`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'apikey': SUPA_KEY },
-    body: JSON.stringify({ email, options: { emailRedirectTo: redirectTo } })
+    body: JSON.stringify({ email, options: { emailRedirectTo: redirectTo }, type: 'magiclink' })
   });
   const data = await r.json();
   if (!r.ok) throw new Error(data.msg || data.error_description || 'Failed to send magic link');
@@ -59,11 +61,15 @@ async function signOut() {
   showAuthScreen();
 }
 
-// ── Handle magic link callback (token in URL hash) ────────────
+// ── Handle magic link callback (token in URL hash or query) ──
 async function handleAuthCallback() {
+  // Supabase puts tokens in the hash fragment
   const hash = window.location.hash;
-  if (!hash) return null;
-  const params = new URLSearchParams(hash.replace('#', '?'));
+  const query = window.location.search;
+  if (!hash && !query) return null;
+  // Try hash first, then query string
+  const paramStr = hash ? hash.replace('#', '') : query.replace('?', '');
+  const params = new URLSearchParams(paramStr);
   const access_token = params.get('access_token');
   const refresh_token = params.get('refresh_token');
   const expires_in = params.get('expires_in');
