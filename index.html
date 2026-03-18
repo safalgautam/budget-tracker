@@ -12,195 +12,244 @@
 </head>
 <body>
 
-<div class="sync-bar hidden" id="sync-bar">
-  <div class="sync-dot"></div>
-  <span id="sync-msg">Syncing…</span>
-  <button id="sync-retry" onclick="loadAll()" style="display:none;margin-left:8px;border:none;background:none;font-size:11px;text-decoration:underline;cursor:pointer;color:inherit;font-family:inherit">Retry</button>
+<!-- ADMIN BAR (only visible to admin) -->
+<div class="admin-bar" id="admin-bar">
+  <span class="admin-label">Admin</span>
+  <select class="admin-select" id="admin-user-select" onchange="switchAdminUser()">
+    <option value="">My data</option>
+  </select>
+  <span class="admin-viewing" id="admin-viewing"></span>
 </div>
 
-<!-- DASHBOARD -->
-<div class="page active" id="page-home">
-  <div class="header">
-    <div class="header-eyebrow" id="hdr-eyebrow">March 2026</div>
-    <div class="header-title" id="hdr-title">My Budget</div>
-    <div class="header-sub" id="hdr-sub">&nbsp;</div>
-  </div>
-  <div class="period-toggle">
-    <button class="pt-btn active" id="pt-weekly" onclick="setPeriod('weekly')">Weekly</button>
-    <button class="pt-btn" id="pt-monthly" onclick="setPeriod('monthly')">Monthly</button>
-  </div>
-  <div class="summary-strip">
-    <div class="sum-card"><div class="sum-label">Budget</div><div class="sum-value" id="sum-budget">—</div></div>
-    <div class="sum-card"><div class="sum-label">Spent</div><div class="sum-value warn" id="sum-spent">—</div></div>
-    <div class="sum-card"><div class="sum-label">Left</div><div class="sum-value good" id="sum-left">—</div></div>
-  </div>
-  <div class="budget-progress">
-    <div class="bp-header"><span class="bp-label" id="bp-label">This week</span><span class="bp-pct" id="bp-pct">—</span></div>
-    <div class="bar-track"><div class="bar-fill" id="bp-bar" style="width:0%"></div></div>
-  </div>
-  <div class="week-strip" id="week-strip">
-    <div class="ws-header">
-      <span class="ws-title">Daily spending</span>
-      <div class="ws-nav">
-        <button class="ws-nav-btn" onclick="shiftWeek(-1)">‹</button>
-        <span class="ws-dates" id="ws-dates"></span>
-        <button class="ws-nav-btn" onclick="shiftWeek(1)">›</button>
+<!-- AUTH SCREEN -->
+<div id="auth-screen" style="display:none">
+  <div class="auth-screen">
+    <div class="auth-logo">Budget</div>
+    <div class="auth-tagline">Your personal finance tracker</div>
+    <div class="auth-card">
+      <div id="login-form">
+        <div class="auth-title">Sign in</div>
+        <div class="auth-sub">Enter your email and we'll send you a magic link to sign in instantly — no password needed.</div>
+        <input class="auth-input" type="email" id="login-email" placeholder="you@email.com" autocomplete="email">
+        <button class="auth-btn" id="login-btn" onclick="handleMagicLink()">Send magic link</button>
+      </div>
+      <div id="login-sent" style="display:none">
+        <div class="auth-sent">
+          <div class="auth-sent-icon">📬</div>
+          <div class="auth-sent-title">Check your email</div>
+          <div class="auth-sent-sub">We sent a magic link to your email. Tap it to sign in — it expires in 1 hour.</div>
+        </div>
       </div>
     </div>
-    <div class="ws-bars" id="ws-bars"></div>
-  </div>
-  <div class="section-label">Categories</div>
-  <div class="cat-list" id="cat-list"></div>
-</div>
-
-<!-- TRANSACTIONS -->
-<div class="page" id="page-tx">
-  <div class="header">
-    <div class="header-eyebrow">Transactions</div>
-    <div class="header-title" id="tx-title">This Week</div>
-  </div>
-  <div class="period-toggle" style="margin-bottom:14px">
-    <button class="pt-btn active" id="pt-weekly-tx" onclick="setPeriodTx('weekly')">This week</button>
-    <button class="pt-btn" id="pt-monthly-tx" onclick="setPeriodTx('monthly')">This month</button>
-  </div>
-  <div class="section-label" id="tx-section-label">Transactions</div>
-  <div class="tx-list" id="tx-list"></div>
-</div>
-
-<!-- IMPORT PDF -->
-<div class="page" id="page-import">
-  <div class="header">
-    <div class="header-eyebrow">Westpac PDF</div>
-    <div class="header-title">Import Transactions</div>
-    <div class="header-sub">Upload your Westpac statement</div>
-  </div>
-  <div id="drop-zone-wrap">
-    <div class="pdf-drop" id="pdf-drop"
-      onclick="document.getElementById('pdf-file').click()"
-      ondragover="event.preventDefault();this.classList.add('drag')"
-      ondragleave="this.classList.remove('drag')"
-      ondrop="handleDrop(event)">
-      <div class="pdf-drop-icon">📄</div>
-      <div class="pdf-drop-label">Tap to upload PDF statement</div>
-      <div class="pdf-drop-sub">Westpac 30-day transaction history</div>
-    </div>
-    <input type="file" id="pdf-file" accept=".pdf" style="display:none" onchange="handleFile(this.files[0])">
-    <div class="pdf-progress" id="pdf-progress">
-      <div class="pdf-progress-label" id="pdf-progress-label">Reading PDF…</div>
-      <div class="pdf-progress-bar"><div class="pdf-progress-fill" id="pdf-progress-fill" style="width:0%"></div></div>
-    </div>
-  </div>
-  <div id="review-wrap" style="display:none">
-    <div style="padding:0 20px;margin-bottom:12px;display:flex;justify-content:space-between;align-items:baseline">
-      <div style="font-size:13px;color:var(--ink2)" id="review-count">0 transactions found</div>
-      <div style="font-size:12px;color:var(--ink3)">Assign categories</div>
-    </div>
-    <div id="review-list"></div>
-    <div class="import-bar">
-      <button class="import-bar-btn secondary" onclick="cancelImport()">Cancel</button>
-      <button class="import-bar-btn primary" onclick="saveImport()" id="save-import-btn">Save all</button>
-    </div>
   </div>
 </div>
 
-<!-- SETTINGS -->
-<div class="page" id="page-settings">
-  <div class="header">
-    <div class="header-eyebrow">Settings</div>
-    <div class="header-title">Manage</div>
+<!-- APP SCREEN -->
+<div id="app-screen" style="display:none">
+
+  <div class="sync-bar hidden" id="sync-bar">
+    <div class="sync-dot"></div>
+    <span id="sync-msg">Syncing…</span>
+    <button id="sync-retry" onclick="loadAll()" style="display:none;margin-left:8px;border:none;background:none;font-size:11px;text-decoration:underline;cursor:pointer;color:inherit;font-family:inherit">Retry</button>
   </div>
 
-  <div class="settings-section">
-    <div class="settings-section-title">Categories</div>
-    <div id="cat-manage-list"></div>
-    <div style="padding:0 16px;margin-bottom:16px">
-      <button class="secondary-btn" style="margin-top:0" onclick="toggleAddCatForm()">+ Add new category</button>
+  <!-- DASHBOARD -->
+  <div class="page active" id="page-home">
+    <div class="header">
+      <div class="header-eyebrow" id="hdr-eyebrow">March 2026</div>
+      <div class="header-title" id="hdr-title">My Budget</div>
+      <div class="header-sub" id="hdr-sub">&nbsp;</div>
     </div>
-    <div class="cat-add-form" id="cat-add-form" style="display:none">
-      <div class="cat-add-title">New category</div>
+    <div class="period-toggle">
+      <button class="pt-btn active" id="pt-weekly" onclick="setPeriod('weekly')">Weekly</button>
+      <button class="pt-btn" id="pt-monthly" onclick="setPeriod('monthly')">Monthly</button>
+    </div>
+    <div class="summary-strip">
+      <div class="sum-card"><div class="sum-label">Budget</div><div class="sum-value" id="sum-budget">—</div></div>
+      <div class="sum-card"><div class="sum-label">Spent</div><div class="sum-value warn" id="sum-spent">—</div></div>
+      <div class="sum-card"><div class="sum-label">Left</div><div class="sum-value good" id="sum-left">—</div></div>
+    </div>
+    <div class="budget-progress">
+      <div class="bp-header"><span class="bp-label" id="bp-label">This week</span><span class="bp-pct" id="bp-pct">—</span></div>
+      <div class="bar-track"><div class="bar-fill" id="bp-bar" style="width:0%"></div></div>
+    </div>
+    <div class="week-strip" id="week-strip">
+      <div class="ws-header">
+        <span class="ws-title">Daily spending</span>
+        <div class="ws-nav">
+          <button class="ws-nav-btn" onclick="shiftWeek(-1)">‹</button>
+          <span class="ws-dates" id="ws-dates"></span>
+          <button class="ws-nav-btn" onclick="shiftWeek(1)">›</button>
+        </div>
+      </div>
+      <div class="ws-bars" id="ws-bars"></div>
+    </div>
+    <div class="section-label">Categories</div>
+    <div class="cat-list" id="cat-list"></div>
+  </div>
+
+  <!-- TRANSACTIONS -->
+  <div class="page" id="page-tx">
+    <div class="header">
+      <div class="header-eyebrow">Transactions</div>
+      <div class="header-title" id="tx-title">This Week</div>
+    </div>
+    <div class="period-toggle" style="margin-bottom:14px">
+      <button class="pt-btn active" id="pt-weekly-tx" onclick="setPeriodTx('weekly')">This week</button>
+      <button class="pt-btn" id="pt-monthly-tx" onclick="setPeriodTx('monthly')">This month</button>
+    </div>
+    <div class="section-label" id="tx-section-label">Transactions</div>
+    <div class="tx-list" id="tx-list"></div>
+  </div>
+
+  <!-- IMPORT PDF -->
+  <div class="page" id="page-import">
+    <div class="header">
+      <div class="header-eyebrow">Westpac PDF</div>
+      <div class="header-title">Import Transactions</div>
+      <div class="header-sub">Upload your Westpac statement</div>
+    </div>
+    <div id="drop-zone-wrap">
+      <div class="pdf-drop" id="pdf-drop"
+        onclick="document.getElementById('pdf-file').click()"
+        ondragover="event.preventDefault();this.classList.add('drag')"
+        ondragleave="this.classList.remove('drag')"
+        ondrop="handleDrop(event)">
+        <div class="pdf-drop-icon">📄</div>
+        <div class="pdf-drop-label">Tap to upload PDF statement</div>
+        <div class="pdf-drop-sub">Westpac 30-day transaction history</div>
+      </div>
+      <input type="file" id="pdf-file" accept=".pdf" style="display:none" onchange="handleFile(this.files[0])">
+      <div class="pdf-progress" id="pdf-progress">
+        <div class="pdf-progress-label" id="pdf-progress-label">Reading PDF…</div>
+        <div class="pdf-progress-bar"><div class="pdf-progress-fill" id="pdf-progress-fill" style="width:0%"></div></div>
+      </div>
+    </div>
+    <div id="review-wrap" style="display:none">
+      <div style="padding:0 20px;margin-bottom:12px;display:flex;justify-content:space-between;align-items:baseline">
+        <div style="font-size:13px;color:var(--ink2)" id="review-count">0 transactions found</div>
+        <div style="font-size:12px;color:var(--ink3)">Assign categories</div>
+      </div>
+      <div id="review-list"></div>
+      <div class="import-bar">
+        <button class="import-bar-btn secondary" onclick="cancelImport()">Cancel</button>
+        <button class="import-bar-btn primary" onclick="saveImport()" id="save-import-btn">Save all</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- SETTINGS -->
+  <div class="page" id="page-settings">
+    <div class="header">
+      <div class="header-eyebrow">Settings</div>
+      <div class="header-title">Manage</div>
+    </div>
+
+    <!-- Account -->
+    <div class="settings-section">
+      <div class="settings-section-title">Account</div>
+      <div class="user-info">
+        <span class="user-email" id="user-email"></span>
+        <button class="signout-btn" onclick="signOut()">Sign out</button>
+      </div>
+    </div>
+
+    <!-- Categories -->
+    <div class="settings-section">
+      <div class="settings-section-title">Categories</div>
+      <div id="cat-manage-list"></div>
+      <div style="padding:0 16px;margin-bottom:16px">
+        <button class="secondary-btn" style="margin-top:0" onclick="toggleAddCatForm()">+ Add new category</button>
+      </div>
+      <div class="cat-add-form" id="cat-add-form" style="display:none">
+        <div class="cat-add-title">New category</div>
+        <div class="form-group">
+          <label class="form-label">Name</label>
+          <input class="form-input" id="new-cat-name" placeholder="e.g. Coffee">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Icon</label>
+          <div class="emoji-grid" id="emoji-grid"></div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Colour</label>
+          <div class="color-grid" id="color-grid"></div>
+        </div>
+        <button class="submit-btn" onclick="saveNewCategory()">Add category</button>
+      </div>
+    </div>
+
+    <!-- Budgets -->
+    <div class="settings-section">
+      <div class="settings-section-title">Budgets</div>
+      <div class="budget-period-row">
+        <button class="bpr-btn active" id="bpr-weekly" onclick="setBudgetTab('weekly')">Weekly</button>
+        <button class="bpr-btn" id="bpr-monthly" onclick="setBudgetTab('monthly')">Monthly</button>
+      </div>
+      <div class="total-row">
+        <span class="total-row-label" id="total-label">Total weekly budget</span>
+        <span class="total-row-val" id="total-val">$0</span>
+      </div>
+      <div class="budget-form" id="budget-form"></div>
+      <button class="save-btn" onclick="saveBudgets()">Save budgets</button>
+    </div>
+  </div>
+
+  <!-- Nav -->
+  <nav class="nav">
+    <button class="nav-btn active" id="nav-home" onclick="showPage('home')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+      Overview
+    </button>
+    <button class="nav-btn" id="nav-tx" onclick="showPage('tx')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+      Transactions
+    </button>
+    <button class="nav-btn" id="nav-import" onclick="showPage('import')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+      Import
+    </button>
+    <button class="nav-btn" id="nav-settings" onclick="showPage('settings')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-2 2 2 2 0 01-2-2v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 01-2-2 2 2 0 012-2h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 010-2.83 2 2 0 012.83 0l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 012-2 2 2 0 012 2v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 0 2 2 0 010 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 012 2 2 2 0 01-2 2h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
+      Settings
+    </button>
+  </nav>
+
+  <button class="add-fab" id="add-fab" onclick="openModal()">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+  </button>
+
+  <!-- Add Expense Modal -->
+  <div class="modal-overlay" id="modal" onclick="closeOuter(event)">
+    <div class="modal">
+      <div class="modal-handle"></div>
+      <div class="modal-title">Add expense</div>
       <div class="form-group">
-        <label class="form-label">Name</label>
-        <input class="form-input" id="new-cat-name" placeholder="e.g. Coffee">
+        <label class="form-label">Amount (AUD)</label>
+        <input class="form-input" type="number" id="inp-amount" placeholder="0.00" step="0.01" inputmode="decimal">
       </div>
       <div class="form-group">
-        <label class="form-label">Icon</label>
-        <div class="emoji-grid" id="emoji-grid"></div>
+        <label class="form-label">Merchant / Note</label>
+        <input class="form-input" type="text" id="inp-merchant" placeholder="e.g. Woolworths">
       </div>
       <div class="form-group">
-        <label class="form-label">Colour</label>
-        <div class="color-grid" id="color-grid"></div>
+        <label class="form-label">Category</label>
+        <div class="cat-picker" id="cat-picker"></div>
       </div>
-      <button class="submit-btn" onclick="saveNewCategory()">Add category</button>
+      <div class="form-group">
+        <label class="form-label">Date</label>
+        <input class="form-input" type="date" id="inp-date">
+      </div>
+      <button class="submit-btn" id="submit-btn" onclick="addExpense()">Add expense</button>
     </div>
   </div>
 
-  <div class="settings-section">
-    <div class="settings-section-title">Budgets</div>
-    <div class="budget-period-row">
-      <button class="bpr-btn active" id="bpr-weekly" onclick="setBudgetTab('weekly')">Weekly</button>
-      <button class="bpr-btn" id="bpr-monthly" onclick="setBudgetTab('monthly')">Monthly</button>
-    </div>
-    <div class="total-row">
-      <span class="total-row-label" id="total-label">Total weekly budget</span>
-      <span class="total-row-val" id="total-val">$0</span>
-    </div>
-    <div class="budget-form" id="budget-form"></div>
-    <button class="save-btn" onclick="saveBudgets()">Save budgets</button>
-  </div>
-</div>
+</div><!-- end app-screen -->
 
-<!-- Nav -->
-<nav class="nav">
-  <button class="nav-btn active" id="nav-home" onclick="showPage('home')">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
-    Overview
-  </button>
-  <button class="nav-btn" id="nav-tx" onclick="showPage('tx')">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
-    Transactions
-  </button>
-  <button class="nav-btn" id="nav-import" onclick="showPage('import')">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-    Import
-  </button>
-  <button class="nav-btn" id="nav-settings" onclick="showPage('settings')">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-2 2 2 2 0 01-2-2v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 01-2-2 2 2 0 012-2h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 010-2.83 2 2 0 012.83 0l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 012-2 2 2 0 012 2v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 0 2 2 0 010 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 012 2 2 2 0 01-2 2h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
-    Settings
-  </button>
-</nav>
-
-<button class="add-fab" id="add-fab" onclick="openModal()">
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-</button>
-
-<!-- Add Expense Modal -->
-<div class="modal-overlay" id="modal" onclick="closeOuter(event)">
-  <div class="modal">
-    <div class="modal-handle"></div>
-    <div class="modal-title">Add expense</div>
-    <div class="form-group">
-      <label class="form-label">Amount (AUD)</label>
-      <input class="form-input" type="number" id="inp-amount" placeholder="0.00" step="0.01" inputmode="decimal">
-    </div>
-    <div class="form-group">
-      <label class="form-label">Merchant / Note</label>
-      <input class="form-input" type="text" id="inp-merchant" placeholder="e.g. Woolworths">
-    </div>
-    <div class="form-group">
-      <label class="form-label">Category</label>
-      <div class="cat-picker" id="cat-picker"></div>
-    </div>
-    <div class="form-group">
-      <label class="form-label">Date</label>
-      <input class="form-input" type="date" id="inp-date">
-    </div>
-    <button class="submit-btn" id="submit-btn" onclick="addExpense()">Add expense</button>
-  </div>
-</div>
-
-<!-- JS — order matters: supabase → state → features → app -->
+<!-- JS — order matters -->
 <script src="js/supabase.js"></script>
 <script src="js/state.js"></script>
+<script src="js/auth.js"></script>
 <script src="js/home.js"></script>
 <script src="js/transactions.js"></script>
 <script src="js/budgets.js"></script>

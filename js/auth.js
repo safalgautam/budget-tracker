@@ -1,0 +1,169 @@
+// ── Auth state ────────────────────────────────────────────────
+let currentUser = null;
+let isAdmin = false;
+let adminViewUserId = null;
+
+// ── Session storage ───────────────────────────────────────────
+function getStoredSession() {
+  try {
+    const raw = localStorage.getItem('sb_session');
+    if (!raw) return null;
+    const s = JSON.parse(raw);
+    if (s.expires_at && Date.now() / 1000 > s.expires_at) {
+      localStorage.removeItem('sb_session');
+      return null;
+    }
+    return s;
+  } catch (e) { return null; }
+}
+function storeSession(s) {
+  if (s) localStorage.setItem('sb_session', JSON.stringify(s));
+  else localStorage.removeItem('sb_session');
+}
+
+// ── Auth-aware headers ────────────────────────────────────────
+function userHeaders() {
+  return {
+    'Content-Type': 'application/json',
+    'apikey': SUPA_KEY,
+    'Authorization': 'Bearer ' + (window._authToken || SUPA_KEY)
+  };
+}
+
+// ── Override global H with user token ────────────────────────
+function refreshH() {
+  window._H = userHeaders();
+}
+
+// ── Magic link ────────────────────────────────────────────────
+async function sendMagicLink(email) {
+  const redirectTo = window.location.origin + window.location.pathname;
+  const r = await fetch(`${SUPA_URL}/auth/v1/magiclink`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'apikey': SUPA_KEY },
+    body: JSON.stringify({ email, options: { emailRedirectTo: redirectTo } })
+  });
+  const data = await r.json();
+  if (!r.ok) throw new Error(data.msg || data.error_description || 'Failed to send magic link');
+}
+
+// ── Sign out ──────────────────────────────────────────────────
+async function signOut() {
+  await fetch(`${SUPA_URL}/auth/v1/logout`, {
+    method: 'POST',
+    headers: userHeaders()
+  }).catch(() => {});
+  storeSession(null);
+  window._authToken = null;
+  currentUser = null; isAdmin = false; adminViewUserId = null;
+  showAuthScreen();
+}
+
+// ── Handle magic link callback (token in URL hash) ────────────
+async function handleAuthCallback() {
+  const hash = window.location.hash;
+  if (!hash) return null;
+  const params = new URLSearchParams(hash.replace('#', '?'));
+  const access_token = params.get('access_token');
+  const refresh_token = params.get('refresh_token');
+  const expires_in = params.get('expires_in');
+  if (!access_token) return null;
+  const r = await fetch(`${SUPA_URL}/auth/v1/user`, {
+    headers: { 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + access_token }
+  });
+  const user = await r.json();
+  if (!r.ok) return null;
+  const session = {
+    access_token, refresh_token,
+    expires_at: Math.floor(Date.now() / 1000) + Number(expires_in || 3600),
+    user
+  };
+  storeSession(session);
+  window.history.replaceState({}, document.title, window.location.pathname);
+  return session;
+}
+
+// ── Check admin ───────────────────────────────────────────────
+async function checkAdmin(token) {
+  try {
+    const r = await fetch(`${SUPA_URL}/rest/v1/admins?select=user_id&limit=1`, {
+      headers: { 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + token }
+    });
+    const d = await r.json();
+    return Array.isArray(d) && d.length > 0;
+  } catch (e) { return false; }
+}
+
+// ── Load users for admin view ─────────────────────────────────
+async function loadAdminUserList() {
+  try {
+    const r = await fetch(`${SUPA_URL}/rest/v1/rpc/list_users`, {
+      method: 'POST',
+      headers: userHeaders(),
+      body: JSON.stringify({})
+    });
+    if (!r.ok) return [];
+    return await r.json();
+  } catch (e) { return []; }
+}
+
+// ── Render admin bar ──────────────────────────────────────────
+async function renderAdminBar() {
+  const bar = document.getElementById('admin-bar');
+  bar.style.display = 'flex';
+  const users = await loadAdminUserList();
+  const select = document.getElementById('admin-user-select');
+  select.innerHTML = `<option value="">My data</option>` +
+    users.filter(u => u.id !== currentUser.id).map(u =>
+      `<option value="${u.id}">${u.email}</option>`
+    ).join('');
+}
+
+async function switchAdminUser() {
+  const select = document.getElementById('admin-user-select');
+  window._adminViewUserId = select.value || null;
+  document.getElementById('admin-viewing').textContent = window._adminViewUserId
+    ? 'Viewing: ' + select.options[select.selectedIndex].text
+    : '';
+  await loadAll();
+}
+
+// ── Init ──────────────────────────────────────────────────────
+async function initAuth() {
+  const callbackSession = await handleAuthCallback();
+  const session = callbackSession || getStoredSession();
+  if (!session) { showAuthScreen(); return; }
+  currentUser = session.user;
+  window._authToken = session.access_token;
+  window._userId = session.user.id;  // used by sbInsert/sbUpsert
+  window._adminViewUserId = null;
+  isAdmin = await checkAdmin(session.access_token);
+  showAppScreen();
+  if (isAdmin) await renderAdminBar();
+  await loadAll();
+}
+
+function showAuthScreen() {
+  document.getElementById('auth-screen').style.display = 'flex';
+  document.getElementById('app-screen').style.display = 'none';
+}
+function showAppScreen() {
+  document.getElementById('auth-screen').style.display = 'none';
+  document.getElementById('app-screen').style.display = 'block';
+  if (currentUser) document.getElementById('user-email').textContent = currentUser.email;
+}
+
+async function handleMagicLink() {
+  const email = document.getElementById('login-email').value.trim();
+  if (!email) { alert('Please enter your email'); return; }
+  const btn = document.getElementById('login-btn');
+  btn.textContent = 'Sending…'; btn.disabled = true;
+  try {
+    await sendMagicLink(email);
+    document.getElementById('login-form').style.display = 'none';
+    document.getElementById('login-sent').style.display = 'block';
+  } catch (e) {
+    alert('Error: ' + e.message);
+    btn.textContent = 'Send magic link'; btn.disabled = false;
+  }
+}

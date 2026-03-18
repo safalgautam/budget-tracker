@@ -9,13 +9,12 @@ function showPage(name) {
   if (name === 'tx') renderTransactions();
 }
 
-// ── Settings page ─────────────────────────────────────────────
 function renderSettings() {
   renderCategoryManager();
   renderBudgetForm();
 }
 
-// ── Load all data from Supabase ───────────────────────────────
+// ── Load all data ─────────────────────────────────────────────
 async function loadAll() {
   showSync('syncing', 'Loading…');
   try {
@@ -23,15 +22,16 @@ async function loadAll() {
     const fromDate = past.toISOString().slice(0, 10);
 
     let catData = [], txData = [], bgData = [];
-    try { catData = await sbGet('categories', 'order=created_at.asc'); }
+    try { catData = await sbGetAsUser('categories', 'order=created_at.asc'); }
     catch (e) { throw new Error('categories: ' + e.message); }
-    try { txData = await sbGet('transactions', `date=gte.${fromDate}&order=date.desc,created_at.desc`); }
+    try { txData = await sbGetAsUser('transactions', `date=gte.${fromDate}&order=date.desc,created_at.desc`); }
     catch (e) { throw new Error('transactions: ' + e.message); }
-    try { bgData = await sbGet('budgets', 'select=period,category,amount'); }
+    try { bgData = await sbGetAsUser('budgets', 'select=period,category,amount'); }
     catch (e) { throw new Error('budgets: ' + e.message); }
 
     categories = catData || [];
     transactions = txData || [];
+    budgets = { weekly: {}, monthly: {} };
     if (bgData && bgData.length) {
       bgData.forEach(r => {
         if (!budgets[r.period]) budgets[r.period] = {};
@@ -49,4 +49,4 @@ async function loadAll() {
 }
 
 // ── Init ──────────────────────────────────────────────────────
-loadAll();
+initAuth();
