@@ -7,155 +7,8 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <title>Budget Tracker</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500&display=swap" rel="stylesheet">
-<style>
-:root {
-  --bg: #F5F2EC;
-  --surface: #FDFBF7;
-  --surface2: #EDE9E0;
-  --ink: #1A1714;
-  --ink2: #6B6560;
-  --ink3: #9E9994;
-  --accent: #2D5A3D;
-  --accent-light: #E8F0EA;
-  --red: #C4622D;
-  --red-light: #FAF0EB;
-  --border: rgba(26,23,20,0.10);
-  --border2: rgba(26,23,20,0.18);
-  --radius: 14px;
-  --radius-sm: 8px;
-}
-*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
-body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--ink);min-height:100vh;overflow-x:hidden}
-
-/* Sync status */
-.sync-bar{display:flex;align-items:center;justify-content:center;gap:6px;padding:6px;font-size:11px;letter-spacing:.03em;position:fixed;top:0;left:0;right:0;z-index:300;transition:all .3s}
-.sync-bar.syncing{background:#FFF8E6;color:#7A6200}
-.sync-bar.ok{background:#EAF3DE;color:#3B6D11}
-.sync-bar.err{background:#FCEBEB;color:#A32D2D}
-.sync-bar.hidden{opacity:0;pointer-events:none}
-.sync-dot{width:6px;height:6px;border-radius:50%;background:currentColor}
-
-/* Period toggle */
-.period-toggle{display:flex;background:var(--surface2);border-radius:99px;padding:3px;margin:0 16px 16px;gap:2px}
-.pt-btn{flex:1;padding:8px;border:none;background:none;border-radius:99px;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:500;color:var(--ink3);cursor:pointer;transition:all .15s}
-.pt-btn.active{background:var(--surface);color:var(--ink);box-shadow:0 1px 3px rgba(0,0,0,.08)}
-
-/* Nav */
-.nav{display:flex;justify-content:space-around;align-items:center;background:var(--surface);border-top:.5px solid var(--border2);position:fixed;bottom:0;left:0;right:0;z-index:100;padding:10px 0 env(safe-area-inset-bottom,10px)}
-.nav-btn{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;border:none;background:none;cursor:pointer;padding:4px 0;color:var(--ink3);font-family:'DM Sans',sans-serif;font-size:11px;letter-spacing:.02em;transition:color .15s}
-.nav-btn.active{color:var(--accent)}
-.nav-btn svg{width:22px;height:22px;stroke-width:1.5}
-
-/* Pages */
-.page{display:none;padding:28px 0 80px;min-height:100vh}
-.page.active{display:block}
-
-/* Header */
-.header{padding:36px 20px 16px}
-.header-eyebrow{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink3);margin-bottom:4px}
-.header-title{font-family:'DM Serif Display',serif;font-size:30px;color:var(--ink);line-height:1.1}
-.header-sub{font-size:13px;color:var(--ink2);margin-top:4px}
-
-/* Summary strip */
-.summary-strip{margin:0 16px 14px;display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
-.sum-card{background:var(--surface);border:.5px solid var(--border);border-radius:var(--radius);padding:12px 10px}
-.sum-label{font-size:11px;color:var(--ink3);letter-spacing:.04em;text-transform:uppercase;margin-bottom:4px}
-.sum-value{font-size:17px;font-weight:500;color:var(--ink)}
-.sum-value.good{color:var(--accent)}
-.sum-value.warn{color:var(--red)}
-
-/* Progress */
-.budget-progress{margin:0 16px 16px;background:var(--surface);border:.5px solid var(--border);border-radius:var(--radius);padding:14px 16px}
-.bp-header{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px}
-.bp-label{font-size:13px;color:var(--ink2)}
-.bp-pct{font-size:13px;font-weight:500}
-.bar-track{height:6px;background:var(--surface2);border-radius:99px;overflow:hidden}
-.bar-fill{height:100%;border-radius:99px;background:var(--accent);transition:width .4s ease}
-.bar-fill.over{background:var(--red)}
-
-/* Category cards */
-.section-label{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink3);padding:0 20px;margin-bottom:8px}
-.cat-list{padding:0 16px;display:flex;flex-direction:column;gap:7px;margin-bottom:20px}
-.cat-card{background:var(--surface);border:.5px solid var(--border);border-radius:var(--radius);padding:13px 14px;display:flex;align-items:center;gap:11px;cursor:pointer;transition:background .1s}
-.cat-card:active{background:var(--surface2)}
-.cat-icon{width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0}
-.cat-info{flex:1;min-width:0}
-.cat-name{font-size:14px;font-weight:500}
-.cat-bar-track{height:3px;background:var(--surface2);border-radius:99px;overflow:hidden;margin-top:5px}
-.cat-bar-fill{height:100%;border-radius:99px;transition:width .3s}
-.cat-amounts{text-align:right;flex-shrink:0}
-.cat-spent{font-size:14px;font-weight:500}
-.cat-budget{font-size:11px;color:var(--ink3);margin-top:1px}
-
-/* FAB */
-.add-fab{position:fixed;bottom:74px;right:20px;width:52px;height:52px;border-radius:50%;background:var(--accent);border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 14px rgba(45,90,61,.38);z-index:99;transition:transform .15s}
-.add-fab:active{transform:scale(.93)}
-.add-fab svg{width:24px;height:24px;stroke:white;stroke-width:2}
-
-/* Modal */
-.modal-overlay{display:none;position:fixed;inset:0;background:rgba(26,23,20,.45);z-index:200;align-items:flex-end}
-.modal-overlay.open{display:flex}
-.modal{background:var(--surface);border-radius:20px 20px 0 0;padding:24px 20px env(safe-area-inset-bottom,20px);width:100%;max-height:88vh;overflow-y:auto;animation:slideUp .25s ease}
-@keyframes slideUp{from{transform:translateY(100%)}to{transform:translateY(0)}}
-.modal-handle{width:36px;height:4px;background:var(--surface2);border-radius:99px;margin:0 auto 20px}
-.modal-title{font-family:'DM Serif Display',serif;font-size:22px;margin-bottom:18px}
-.form-group{margin-bottom:14px}
-.form-label{font-size:12px;color:var(--ink3);letter-spacing:.04em;text-transform:uppercase;margin-bottom:6px;display:block}
-.form-input{width:100%;border:.5px solid var(--border2);border-radius:var(--radius-sm);padding:12px 14px;font-size:16px;font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--ink);outline:none;appearance:none}
-.form-input:focus{border-color:var(--accent)}
-.cat-picker{display:grid;grid-template-columns:repeat(4,1fr);gap:7px}
-.cat-pick-btn{border:.5px solid var(--border);border-radius:var(--radius-sm);padding:9px 4px;display:flex;flex-direction:column;align-items:center;gap:3px;cursor:pointer;background:var(--bg);font-size:10px;color:var(--ink2);font-family:'DM Sans',sans-serif;transition:all .1s}
-.cat-pick-btn.selected{border-color:var(--accent);background:var(--accent-light);color:var(--accent)}
-.cat-pick-icon{font-size:20px}
-.submit-btn{width:100%;padding:14px;background:var(--accent);color:white;border:none;border-radius:var(--radius);font-size:15px;font-weight:500;font-family:'DM Sans',sans-serif;cursor:pointer;margin-top:6px;transition:opacity .15s}
-.submit-btn:active{opacity:.85}
-
-/* Transactions */
-.tx-list{padding:0 16px;display:flex;flex-direction:column;gap:6px}
-.tx-item{background:var(--surface);border:.5px solid var(--border);border-radius:var(--radius);padding:12px 14px;display:flex;align-items:center;gap:11px}
-.tx-icon{width:34px;height:34px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0}
-.tx-info{flex:1;min-width:0}
-.tx-merchant{font-size:14px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.tx-meta{font-size:12px;color:var(--ink3);margin-top:1px}
-.tx-amount{font-size:15px;font-weight:500;color:var(--red);flex-shrink:0}
-.tx-delete{border:none;background:none;cursor:pointer;color:var(--ink3);padding:4px 6px;font-size:18px;line-height:1}
-.chip{display:inline-block;font-size:11px;padding:2px 7px;border-radius:99px;background:var(--accent-light);color:var(--accent);font-weight:500}
-.empty-state{text-align:center;padding:50px 20px;color:var(--ink3)}
-.empty-icon{font-size:44px;margin-bottom:10px}
-.empty-label{font-size:14px}
-
-/* Budget settings */
-.budget-form{padding:0 16px;display:flex;flex-direction:column;gap:8px}
-.budget-period-row{display:flex;background:var(--surface2);border-radius:99px;padding:3px;margin:0 16px 14px;gap:2px}
-.bpr-btn{flex:1;padding:7px;border:none;background:none;border-radius:99px;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:500;color:var(--ink3);cursor:pointer;transition:all .15s}
-.bpr-btn.active{background:var(--surface);color:var(--ink)}
-.budget-item{background:var(--surface);border:.5px solid var(--border);border-radius:var(--radius);padding:13px 14px;display:flex;align-items:center;gap:11px}
-.budget-icon{font-size:20px;width:28px;text-align:center}
-.budget-name{flex:1;font-size:14px;font-weight:500}
-.budget-input{width:88px;border:.5px solid var(--border2);border-radius:var(--radius-sm);padding:8px 10px;font-size:14px;font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--ink);text-align:right;outline:none}
-.budget-input:focus{border-color:var(--accent)}
-.save-btn{margin:14px 16px 0;padding:14px;background:var(--accent);color:white;border:none;border-radius:var(--radius);font-size:15px;font-weight:500;font-family:'DM Sans',sans-serif;cursor:pointer;width:calc(100% - 32px)}
-.total-row{margin:0 16px 14px;background:var(--accent-light);border:.5px solid rgba(45,90,61,.2);border-radius:var(--radius);padding:13px 16px;display:flex;justify-content:space-between;align-items:center}
-.total-row-label{font-size:13px;font-weight:500;color:var(--accent)}
-.total-row-val{font-size:18px;font-weight:500;color:var(--accent)}
-
-/* Week strip */
-.week-strip{margin:0 16px 14px;background:var(--surface);border:.5px solid var(--border);border-radius:var(--radius);padding:14px 16px}
-.ws-header{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:10px}
-.ws-title{font-size:12px;color:var(--ink3);letter-spacing:.04em;text-transform:uppercase}
-.ws-nav{display:flex;gap:6px;align-items:center}
-.ws-nav-btn{border:none;background:none;cursor:pointer;color:var(--ink3);font-size:18px;padding:0 4px;line-height:1}
-.ws-dates{font-size:12px;color:var(--ink2);font-weight:500}
-.ws-bars{display:flex;align-items:flex-end;gap:4px;height:50px}
-.ws-bar-col{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px}
-.ws-bar-wrap{flex:1;width:100%;display:flex;align-items:flex-end}
-.ws-bar{width:100%;border-radius:3px 3px 0 0;min-height:2px;transition:height .3s}
-.ws-day-label{font-size:10px;color:var(--ink3)}
-
-/* Loading skeleton */
-.skeleton{background:linear-gradient(90deg,var(--surface2) 25%,var(--surface) 50%,var(--surface2) 75%);background-size:200% 100%;animation:shimmer 1.2s infinite;border-radius:var(--radius-sm);height:16px;margin-bottom:6px}
-@keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
-</style>
+<link rel="stylesheet" href="css/style.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 </head>
 <body>
 
@@ -214,23 +67,86 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--ink);min-
   <div class="tx-list" id="tx-list"></div>
 </div>
 
-<!-- BUDGETS -->
+<!-- IMPORT PDF -->
+<div class="page" id="page-import">
+  <div class="header">
+    <div class="header-eyebrow">Westpac PDF</div>
+    <div class="header-title">Import Transactions</div>
+    <div class="header-sub">Upload your Westpac statement</div>
+  </div>
+  <div id="drop-zone-wrap">
+    <div class="pdf-drop" id="pdf-drop"
+      onclick="document.getElementById('pdf-file').click()"
+      ondragover="event.preventDefault();this.classList.add('drag')"
+      ondragleave="this.classList.remove('drag')"
+      ondrop="handleDrop(event)">
+      <div class="pdf-drop-icon">📄</div>
+      <div class="pdf-drop-label">Tap to upload PDF statement</div>
+      <div class="pdf-drop-sub">Westpac 30-day transaction history</div>
+    </div>
+    <input type="file" id="pdf-file" accept=".pdf" style="display:none" onchange="handleFile(this.files[0])">
+    <div class="pdf-progress" id="pdf-progress">
+      <div class="pdf-progress-label" id="pdf-progress-label">Reading PDF…</div>
+      <div class="pdf-progress-bar"><div class="pdf-progress-fill" id="pdf-progress-fill" style="width:0%"></div></div>
+    </div>
+  </div>
+  <div id="review-wrap" style="display:none">
+    <div style="padding:0 20px;margin-bottom:12px;display:flex;justify-content:space-between;align-items:baseline">
+      <div style="font-size:13px;color:var(--ink2)" id="review-count">0 transactions found</div>
+      <div style="font-size:12px;color:var(--ink3)">Assign categories</div>
+    </div>
+    <div id="review-list"></div>
+    <div class="import-bar">
+      <button class="import-bar-btn secondary" onclick="cancelImport()">Cancel</button>
+      <button class="import-bar-btn primary" onclick="saveImport()" id="save-import-btn">Save all</button>
+    </div>
+  </div>
+</div>
+
+<!-- SETTINGS -->
 <div class="page" id="page-settings">
   <div class="header">
     <div class="header-eyebrow">Settings</div>
-    <div class="header-title">Budgets</div>
-    <div class="header-sub">Set your monthly & weekly limits</div>
+    <div class="header-title">Manage</div>
   </div>
-  <div class="budget-period-row">
-    <button class="bpr-btn active" id="bpr-weekly" onclick="setBudgetTab('weekly')">Weekly</button>
-    <button class="bpr-btn" id="bpr-monthly" onclick="setBudgetTab('monthly')">Monthly</button>
+
+  <div class="settings-section">
+    <div class="settings-section-title">Categories</div>
+    <div id="cat-manage-list"></div>
+    <div style="padding:0 16px;margin-bottom:16px">
+      <button class="secondary-btn" style="margin-top:0" onclick="toggleAddCatForm()">+ Add new category</button>
+    </div>
+    <div class="cat-add-form" id="cat-add-form" style="display:none">
+      <div class="cat-add-title">New category</div>
+      <div class="form-group">
+        <label class="form-label">Name</label>
+        <input class="form-input" id="new-cat-name" placeholder="e.g. Coffee">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Icon</label>
+        <div class="emoji-grid" id="emoji-grid"></div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Colour</label>
+        <div class="color-grid" id="color-grid"></div>
+      </div>
+      <button class="submit-btn" onclick="saveNewCategory()">Add category</button>
+    </div>
   </div>
-  <div class="total-row">
-    <span class="total-row-label" id="total-label">Total weekly budget</span>
-    <span class="total-row-val" id="total-val">$0</span>
+
+  <div class="settings-section">
+    <div class="settings-section-title">Budgets</div>
+    <div class="budget-period-row">
+      <button class="bpr-btn active" id="bpr-weekly" onclick="setBudgetTab('weekly')">Weekly</button>
+      <button class="bpr-btn" id="bpr-monthly" onclick="setBudgetTab('monthly')">Monthly</button>
+    </div>
+    <div class="total-row">
+      <span class="total-row-label" id="total-label">Total weekly budget</span>
+      <span class="total-row-val" id="total-val">$0</span>
+    </div>
+    <div class="budget-form" id="budget-form"></div>
+    <button class="save-btn" onclick="saveBudgets()">Save budgets</button>
   </div>
-  <div class="budget-form" id="budget-form"></div>
-  <button class="save-btn" onclick="saveBudgets()">Save budgets</button>
 </div>
 
 <!-- Nav -->
@@ -243,9 +159,13 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--ink);min-
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
     Transactions
   </button>
+  <button class="nav-btn" id="nav-import" onclick="showPage('import')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+    Import
+  </button>
   <button class="nav-btn" id="nav-settings" onclick="showPage('settings')">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-2 2 2 2 0 01-2-2v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 01-2-2 2 2 0 012-2h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 010-2.83 2 2 0 012.83 0l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 012-2 2 2 0 012 2v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 0 2 2 0 010 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 012 2 2 2 0 01-2 2h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
-    Budgets
+    Settings
   </button>
 </nav>
 
@@ -253,7 +173,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--ink);min-
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
 </button>
 
-<!-- Modal -->
+<!-- Add Expense Modal -->
 <div class="modal-overlay" id="modal" onclick="closeOuter(event)">
   <div class="modal">
     <div class="modal-handle"></div>
@@ -278,307 +198,14 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--ink);min-
   </div>
 </div>
 
-<script>
-// ── Supabase config ──────────────────────────────────────────
-const SUPA_URL = 'https://afobsnqtywtlupqjimaz.supabase.co';
-const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFmb2JzbnF0eXd0bHVwcWppbWF6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM4MzA0NTIsImV4cCI6MjA4OTQwNjQ1Mn0.MWrWZkZD8fkDa9HCLQUCwPcBm4zmNuWDGWyXMUr77BM';
-const H = {'Content-Type':'application/json','apikey':SUPA_KEY,'Authorization':'Bearer '+SUPA_KEY};
-
-async function sbGet(table, params=''){
-  const url = `${SUPA_URL}/rest/v1/${table}${params?'?'+params:''}`;
-  console.log('sbGet', url);
-  const r = await fetch(url, {headers:{...H,'Accept':'application/json','Prefer':'return=representation'}});
-  const txt = await r.text();
-  console.log('sbGet response', r.status, txt.slice(0,200));
-  if(!r.ok) throw new Error(`${r.status}: ${txt}`);
-  return JSON.parse(txt);
-}
-async function sbInsert(table, body){
-  console.log('sbInsert', table, JSON.stringify(body));
-  const r = await fetch(`${SUPA_URL}/rest/v1/${table}`,{method:'POST',headers:{...H,'Prefer':'return=representation'},body:JSON.stringify(body)});
-  const txt = await r.text();
-  console.log('sbInsert response', r.status, txt);
-  if(!r.ok) throw new Error(`${r.status}: ${txt}`);
-  return JSON.parse(txt);
-}
-async function sbDelete(table, id){
-  const r = await fetch(`${SUPA_URL}/rest/v1/${table}?id=eq.${id}`,{method:'DELETE',headers:H});
-  if(!r.ok){ const t=await r.text(); console.error('sbDelete error',r.status,t); throw new Error(t); }
-}
-async function sbUpsert(table, body, onConflict){
-  console.log('sbUpsert', table, JSON.stringify(body));
-  const r = await fetch(`${SUPA_URL}/rest/v1/${table}?on_conflict=${onConflict}`,{method:'POST',headers:{...H,'Prefer':'resolution=merge-duplicates,return=representation'},body:JSON.stringify(body)});
-  const txt = await r.text();
-  console.log('sbUpsert response', r.status, txt);
-  if(!r.ok) throw new Error(`${r.status}: ${txt}`);
-  return JSON.parse(txt);
-}
-
-// ── App state ────────────────────────────────────────────────
-const CATS = [
-  {id:'groceries', name:'Groceries',    icon:'🛒', color:'#2D5A3D', bg:'#E8F0EA'},
-  {id:'dining',    name:'Dining & Cafe',icon:'☕', color:'#8B4513', bg:'#FAF0EB'},
-  {id:'transport', name:'Transport',    icon:'🚌', color:'#1B5E9E', bg:'#E6F1FB'},
-  {id:'shopping',  name:'Shopping',     icon:'🛍️', color:'#6B3FA0', bg:'#F0EBFA'},
-  {id:'rent',      name:'Rent & Bills', icon:'🏠', color:'#C4622D', bg:'#FAF0EB'},
-  {id:'entertain', name:'Entertainment',icon:'🎬', color:'#B5398B', bg:'#FAE8F5'},
-  {id:'health',    name:'Health',       icon:'💊', color:'#1B7A6E', bg:'#E3F5F3'},
-  {id:'savings',   name:'Savings',      icon:'💰', color:'#7A6200', bg:'#FAF3D9'},
-];
-const DEFAULT_BUDGETS = {
-  weekly:  {groceries:100,dining:50,transport:40,shopping:60,rent:375,entertain:25,health:20,savings:125},
-  monthly: {groceries:400,dining:200,transport:150,shopping:240,rent:1500,entertain:100,health:80,savings:500}
-};
-
-let transactions = [];
-let budgets = JSON.parse(JSON.stringify(DEFAULT_BUDGETS));
-let period = 'weekly';
-let periodTx = 'weekly';
-let budgetTab = 'weekly';
-let selectedCat = 'groceries';
-let weekOffset = 0;
-
-// ── Sync bar ─────────────────────────────────────────────────
-let syncTimer;
-function showSync(state, msg){
-  const bar = document.getElementById('sync-bar');
-  const txt = document.getElementById('sync-msg');
-  const retry = document.getElementById('sync-retry');
-  bar.className = 'sync-bar '+state;
-  txt.textContent = msg;
-  retry.style.display = state==='err' ? 'inline' : 'none';
-  clearTimeout(syncTimer);
-  if(state==='ok') syncTimer = setTimeout(()=>bar.className='sync-bar hidden', 2500);
-  // errors stay visible so user can read them
-}
-
-// ── Date helpers ─────────────────────────────────────────────
-function today(){ return new Date().toISOString().slice(0,10); }
-function currentMonth(){ const n=new Date(); return `${n.getFullYear()}-${String(n.getMonth()+1).padStart(2,'0')}`; }
-function getWeekRange(offset=0){
-  const now = new Date();
-  const mon = new Date(now); mon.setDate(now.getDate()-((now.getDay()+6)%7)+offset*7);
-  const sun = new Date(mon); sun.setDate(mon.getDate()+6);
-  return {start:mon.toISOString().slice(0,10), end:sun.toISOString().slice(0,10), monDate:mon, sunDate:sun};
-}
-function inWeek(date,offset=0){ const r=getWeekRange(offset); return date>=r.start&&date<=r.end; }
-function inMonth(date){ return date&&date.startsWith(currentMonth()); }
-function filteredTx(p,wkOff=0){ return transactions.filter(t=>p==='weekly'?inWeek(t.date,wkOff):inMonth(t.date)); }
-function catSpent(catId,p){ return filteredTx(p,0).filter(t=>t.category===catId).reduce((s,t)=>s+Number(t.amount),0); }
-function totalSpent(p){ return filteredTx(p,0).reduce((s,t)=>s+Number(t.amount),0); }
-function totalBudget(p){ return Object.values(budgets[p]).reduce((s,v)=>s+v,0); }
-function fmt(n){ return '$'+Number(n).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g,','); }
-function fmtDate(iso){ if(!iso) return ''; const [y,m,d]=iso.split('-'); return `${d}/${m}/${y}`; }
-
-// ── Load data from Supabase ──────────────────────────────────
-async function loadAll(){
-  showSync('syncing','Loading…');
-  try {
-    // Transactions - current month + past month for weekly overlap
-    const past = new Date(); past.setMonth(past.getMonth()-1);
-    const fromDate = past.toISOString().slice(0,10);
-    const [txData, bgData] = await Promise.all([
-      sbGet('transactions', `date=gte.${fromDate}&order=date.desc,created_at.desc`),
-      sbGet('budgets', `select=period,category,amount`)
-    ]);
-    transactions = txData || [];
-    // Rebuild budgets from DB, fall back to defaults
-    if(bgData && bgData.length){
-      bgData.forEach(r=>{ if(budgets[r.period]) budgets[r.period][r.category]=Number(r.amount); });
-    }
-    showSync('ok','Synced');
-  } catch(e){
-    console.error('loadAll failed:', e);
-    showSync('err', 'Load error: '+e.message.slice(0,60));
-  }
-  renderHome();
-  renderTransactions();
-}
-
-// ── Render home ──────────────────────────────────────────────
-function renderHome(){
-  const sp=totalSpent(period), bg=totalBudget(period), left=bg-sp;
-  const pct=bg>0?Math.min(100,Math.round(sp/bg*100)):0;
-  document.getElementById('sum-budget').textContent=fmt(bg);
-  document.getElementById('sum-spent').textContent=fmt(sp);
-  const le=document.getElementById('sum-left');
-  le.textContent=fmt(Math.abs(left)); le.className='sum-value '+(left>=0?'good':'warn');
-  document.getElementById('bp-pct').textContent=pct+'%';
-  document.getElementById('bp-label').textContent=period==='weekly'?'This week':'This month';
-  const bar=document.getElementById('bp-bar');
-  bar.style.width=pct+'%'; bar.className='bar-fill'+(pct>=100?' over':'');
-  const now=new Date();
-  if(period==='weekly'){
-    const r=getWeekRange(0);
-    document.getElementById('hdr-eyebrow').textContent=fmtDate(r.start)+' – '+fmtDate(r.end);
-    document.getElementById('hdr-title').textContent='This Week';
-  } else {
-    document.getElementById('hdr-eyebrow').textContent=now.toLocaleString('en-AU',{month:'long',year:'numeric'});
-    document.getElementById('hdr-title').textContent='This Month';
-  }
-  document.getElementById('hdr-sub').textContent=left>=0?fmt(left)+' remaining':fmt(Math.abs(left))+' over budget';
-  document.getElementById('week-strip').style.display=period==='weekly'?'block':'none';
-  if(period==='weekly') renderWeekStrip();
-  document.getElementById('cat-list').innerHTML=CATS.map(c=>{
-    const sp2=catSpent(c.id,period), bg2=budgets[period][c.id]||0;
-    const pct2=bg2>0?Math.min(100,sp2/bg2*100):0, over=sp2>bg2&&bg2>0;
-    return `<div class="cat-card" onclick="openModalCat('${c.id}')">
-      <div class="cat-icon" style="background:${c.bg}">${c.icon}</div>
-      <div class="cat-info">
-        <div class="cat-name">${c.name}</div>
-        <div class="cat-bar-track"><div class="cat-bar-fill" style="width:${pct2}%;background:${over?'#C4622D':c.color}"></div></div>
-      </div>
-      <div class="cat-amounts">
-        <div class="cat-spent" style="color:${over?'#C4622D':c.color}">${fmt(sp2)}</div>
-        <div class="cat-budget">of ${fmt(bg2)}</div>
-      </div>
-    </div>`;
-  }).join('');
-}
-
-function renderWeekStrip(){
-  const r=getWeekRange(weekOffset), mon=r.monDate;
-  const days=['Mo','Tu','We','Th','Fr','Sa','Su'];
-  const amounts=days.map((_,i)=>{
-    const d=new Date(mon); d.setDate(mon.getDate()+i);
-    const iso=d.toISOString().slice(0,10);
-    return transactions.filter(t=>t.date===iso).reduce((s,t)=>s+Number(t.amount),0);
-  });
-  const maxA=Math.max(...amounts,1), todayIso=today();
-  document.getElementById('ws-dates').textContent=
-    mon.toLocaleString('en-AU',{day:'numeric',month:'short'})+' – '+
-    r.sunDate.toLocaleString('en-AU',{day:'numeric',month:'short'});
-  document.getElementById('ws-bars').innerHTML=days.map((d,i)=>{
-    const dt=new Date(mon); dt.setDate(mon.getDate()+i);
-    const iso=dt.toISOString().slice(0,10), amt=amounts[i];
-    const h=Math.round((amt/maxA)*46), isToday=iso===todayIso;
-    return `<div class="ws-bar-col">
-      <div class="ws-bar-wrap">
-        <div class="ws-bar" style="height:${h}px;background:${isToday?'#2D5A3D':'#B4D4C0'}"></div>
-      </div>
-      <div class="ws-day-label" style="color:${isToday?'#2D5A3D':'#9E9994'};font-weight:${isToday?500:400}">${d}</div>
-    </div>`;
-  }).join('');
-}
-function shiftWeek(dir){ weekOffset+=dir; if(weekOffset>0) weekOffset=0; renderWeekStrip(); }
-
-// ── Render transactions ──────────────────────────────────────
-function renderTransactions(){
-  const txs=filteredTx(periodTx).slice();
-  document.getElementById('tx-title').textContent=periodTx==='weekly'?'This Week':'This Month';
-  document.getElementById('tx-section-label').textContent=txs.length+' transaction'+(txs.length!==1?'s':'');
-  const el=document.getElementById('tx-list');
-  if(!txs.length){
-    el.innerHTML='<div class="empty-state"><div class="empty-icon">🧾</div><div class="empty-label">No transactions yet</div></div>';
-    return;
-  }
-  el.innerHTML=txs.map(t=>{
-    const cat=CATS.find(c=>c.id===t.category)||CATS[0];
-    return `<div class="tx-item">
-      <div class="tx-icon" style="background:${cat.bg}">${cat.icon}</div>
-      <div class="tx-info">
-        <div class="tx-merchant">${t.merchant||cat.name}</div>
-        <div class="tx-meta">${fmtDate(t.date)} · <span class="chip">${cat.name}</span></div>
-      </div>
-      <div style="display:flex;align-items:center;gap:6px">
-        <div class="tx-amount">${fmt(t.amount)}</div>
-        <button class="tx-delete" onclick="deleteTx('${t.id}')">×</button>
-      </div>
-    </div>`;
-  }).join('');
-}
-
-// ── Render budget settings ───────────────────────────────────
-function renderBudgetSettings(){
-  let total=0;
-  document.getElementById('budget-form').innerHTML=CATS.map(c=>{
-    const v=budgets[budgetTab][c.id]||0; total+=v;
-    return `<div class="budget-item">
-      <div class="budget-icon">${c.icon}</div>
-      <div class="budget-name">${c.name}</div>
-      <input class="budget-input" type="number" id="bi-${c.id}" value="${v}" inputmode="decimal" onchange="updateTotal()">
-    </div>`;
-  }).join('');
-  document.getElementById('total-label').textContent=`Total ${budgetTab} budget`;
-  document.getElementById('total-val').textContent=fmt(total);
-}
-function updateTotal(){ let t=0; CATS.forEach(c=>{t+=parseFloat(document.getElementById('bi-'+c.id)?.value||0)}); document.getElementById('total-val').textContent=fmt(t); }
-
-// ── Save budgets to Supabase ─────────────────────────────────
-async function saveBudgets(){
-  CATS.forEach(c=>{ budgets[budgetTab][c.id]=parseFloat(document.getElementById('bi-'+c.id)?.value||0); });
-  showSync('syncing','Saving budgets…');
-  try {
-    const rows=CATS.map(c=>({period:budgetTab,category:c.id,amount:budgets[budgetTab][c.id]}));
-    await sbUpsert('budgets',rows,'period,category');
-    showSync('ok','Budgets saved');
-    renderHome();
-    showPage('home');
-  } catch(e){ showSync('err','Save failed — check connection'); }
-}
-
-// ── Add expense ──────────────────────────────────────────────
-async function addExpense(){
-  const amount=parseFloat(document.getElementById('inp-amount').value);
-  const merchant=document.getElementById('inp-merchant').value.trim();
-  const date=document.getElementById('inp-date').value;
-  if(!amount||amount<=0){alert('Please enter a valid amount');return;}
-  const btn=document.getElementById('submit-btn');
-  btn.textContent='Saving…'; btn.disabled=true;
-  showSync('syncing','Saving…');
-  try {
-    const rows=await sbInsert('transactions',[{amount,merchant,category:selectedCat,date}]);
-    transactions.unshift(rows[0]);
-    closeModal();
-    renderHome();
-    renderTransactions();
-    showSync('ok','Expense saved');
-  } catch(e){ console.error('addExpense',e); showSync('err', e.message.slice(0,80)); }
-  btn.textContent='Add expense'; btn.disabled=false;
-}
-
-// ── Delete transaction ───────────────────────────────────────
-async function deleteTx(id){
-  showSync('syncing','Deleting…');
-  try {
-    await sbDelete('transactions',id);
-    transactions=transactions.filter(t=>t.id!==id);
-    renderHome(); renderTransactions();
-    showSync('ok','Deleted');
-  } catch(e){ showSync('err','Delete failed'); }
-}
-
-// ── Modal ────────────────────────────────────────────────────
-function buildPicker(){
-  document.getElementById('cat-picker').innerHTML=CATS.map(c=>
-    `<button class="cat-pick-btn ${c.id===selectedCat?'selected':''}" onclick="selCat('${c.id}')">
-      <span class="cat-pick-icon">${c.icon}</span>${c.name.split(' ')[0]}
-    </button>`).join('');
-}
-function selCat(id){ selectedCat=id; buildPicker(); }
-function openModal(){ document.getElementById('inp-amount').value=''; document.getElementById('inp-merchant').value=''; document.getElementById('inp-date').value=today(); buildPicker(); document.getElementById('modal').classList.add('open'); }
-function openModalCat(id){ selectedCat=id; openModal(); }
-function closeModal(){ document.getElementById('modal').classList.remove('open'); }
-function closeOuter(e){ if(e.target.id==='modal') closeModal(); }
-
-// ── Period switching ─────────────────────────────────────────
-function setPeriod(p){ period=p; document.getElementById('pt-weekly').className='pt-btn'+(p==='weekly'?' active':''); document.getElementById('pt-monthly').className='pt-btn'+(p==='monthly'?' active':''); renderHome(); }
-function setPeriodTx(p){ periodTx=p; document.getElementById('pt-weekly-tx').className='pt-btn'+(p==='weekly'?' active':''); document.getElementById('pt-monthly-tx').className='pt-btn'+(p==='monthly'?' active':''); renderTransactions(); }
-function setBudgetTab(p){ budgetTab=p; document.getElementById('bpr-weekly').className='bpr-btn'+(p==='weekly'?' active':''); document.getElementById('bpr-monthly').className='bpr-btn'+(p==='monthly'?' active':''); renderBudgetSettings(); }
-
-// ── Page nav ─────────────────────────────────────────────────
-function showPage(name){
-  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
-  document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
-  document.getElementById('page-'+name).classList.add('active');
-  document.getElementById('nav-'+name).classList.add('active');
-  document.getElementById('add-fab').style.display=name==='home'?'flex':'none';
-  if(name==='settings') renderBudgetSettings();
-  if(name==='tx') renderTransactions();
-}
-
-// ── Init ─────────────────────────────────────────────────────
-loadAll();
-</script>
+<!-- JS — order matters: supabase → state → features → app -->
+<script src="js/supabase.js"></script>
+<script src="js/state.js"></script>
+<script src="js/home.js"></script>
+<script src="js/transactions.js"></script>
+<script src="js/budgets.js"></script>
+<script src="js/categories.js"></script>
+<script src="js/import.js"></script>
+<script src="js/app.js"></script>
 </body>
 </html>
