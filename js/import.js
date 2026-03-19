@@ -74,8 +74,11 @@ Return ONLY a JSON array of objects. No markdown, no explanation. Example:
     })
   });
   const data = await res.json();
-  if (!res.ok) throw new Error(data.error || 'AI parsing failed');
+  console.log('Edge function response:', res.status, JSON.stringify(data).slice(0, 500));
+  if (!res.ok) throw new Error(JSON.stringify(data));
+  if (!data.content) throw new Error('No content in response: ' + JSON.stringify(data));
   const raw = data.content.map(b => b.text || '').join('').replace(/```json|```/g, '').trim();
+  console.log('Raw AI response:', raw.slice(0, 200));
   return JSON.parse(raw);
 }
 
