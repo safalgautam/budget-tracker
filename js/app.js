@@ -14,6 +14,23 @@ function renderSettings() {
   renderBudgetForm();
 }
 
+// ── Load data via RPC (admin bypass) ─────────────────────────
+async function rpcGetUserData(targetUserId, dataType) {
+  const r = await fetch(`${SUPA_URL}/rest/v1/rpc/get_user_data`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'apikey': SUPA_KEY,
+      'Authorization': 'Bearer ' + window._authToken
+    },
+    body: JSON.stringify({ target_user_id: targetUserId, data_type: dataType })
+  });
+  const txt = await r.text();
+  if (!r.ok) throw new Error(`${r.status}: ${txt}`);
+  const result = JSON.parse(txt);
+  return result || [];
+}
+
 // ── Load all data ─────────────────────────────────────────────
 async function loadAll() {
   showSync('syncing', 'Loading…');
@@ -22,12 +39,24 @@ async function loadAll() {
     const fromDate = past.toISOString().slice(0, 10);
 
     let catData = [], txData = [], bgData = [];
-    try { catData = await sbGetAsUser('categories', 'order=created_at.asc'); }
-    catch (e) { throw new Error('categories: ' + e.message); }
-    try { txData = await sbGetAsUser('transactions', `date=gte.${fromDate}&order=date.desc,created_at.desc`); }
-    catch (e) { throw new Error('transactions: ' + e.message); }
-    try { bgData = await sbGetAsUser('budgets', 'select=period,category,amount'); }
-    catch (e) { throw new Error('budgets: ' + e.message); }
+
+    if (window._adminViewUserId) {
+      // Admin viewing another user — use RPC to bypass RLS
+      try { catData = await rpcGetUserData(window._adminViewUserId, 'categories'); }
+      catch (e) { throw new Error('categories: ' + e.message); }
+      try { txData = await rpcGetUserData(window._adminViewUserId, 'transactions'); }
+      catch (e) { throw new Error('transactions: ' + e.message); }
+      try { bgData = await rpcGetUserData(window._adminViewUserId, 'budgets'); }
+      catch (e) { throw new Error('budgets: ' + e.message); }
+    } else {
+      // Normal user — use RLS filtered queries
+      try { catData = await sbGetAsUser('categories', 'order=created_at.asc'); }
+      catch (e) { throw new Error('categories: ' + e.message); }
+      try { txData = await sbGetAsUser('transactions', `date=gte.${fromDate}&order=date.desc,created_at.desc`); }
+      catch (e) { throw new Error('transactions: ' + e.message); }
+      try { bgData = await sbGetAsUser('budgets', 'select=period,category,amount'); }
+      catch (e) { throw new Error('budgets: ' + e.message); }
+    }
 
     categories = catData || [];
     transactions = txData || [];
