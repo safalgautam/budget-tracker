@@ -1,5 +1,5 @@
 try {
-  pdfjsLib.GlobalWorkerOptions.workerSrc = 'lib/pdf.worker.min.js';
+  pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
 } catch (e) { console.warn('PDF.js worker not set:', e); }
 
 function handleDrop(e) {
@@ -58,9 +58,15 @@ ${text.slice(0, 6000)}
 Return ONLY a JSON array of objects. No markdown, no explanation. Example:
 [{"date":"2026-03-01","merchant":"Woolworths","amount":45.20},{"date":"2026-03-02","merchant":"Shell","amount":80.00}]`;
 
-  const res = await fetch('https://api.anthropic.com/v1/messages', {
+  // Use Supabase Edge Function as proxy to avoid CORS issues
+  const proxyUrl = `${SUPA_URL}/functions/v1/claude-proxy`;
+  const res = await fetch(proxyUrl, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer ' + (window._authToken || SUPA_KEY),
+      'apikey': SUPA_KEY
+    },
     body: JSON.stringify({
       model: 'claude-sonnet-4-20250514',
       max_tokens: 4000,
@@ -68,6 +74,7 @@ Return ONLY a JSON array of objects. No markdown, no explanation. Example:
     })
   });
   const data = await res.json();
+  if (!res.ok) throw new Error(data.error || 'AI parsing failed');
   const raw = data.content.map(b => b.text || '').join('').replace(/```json|```/g, '').trim();
   return JSON.parse(raw);
 }
